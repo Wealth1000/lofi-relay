@@ -1,15 +1,24 @@
+import shutil
+
 import yt_dlp
 
 from app.config import YOUTUBE_COOKIES_PATH
 
 
 def get_stream_url(url: str, format_id: str) -> str:
+    runtime_cookie_file = "/tmp/youtube-cookies.txt"
+
+    shutil.copyfile(
+        YOUTUBE_COOKIES_PATH,
+        runtime_cookie_file,
+    )
+
     options = {
         "format": format_id,
         "quiet": False,
         "no_warnings": False,
         "cachedir": False,
-        "cookiefile": YOUTUBE_COOKIES_PATH,
+        "cookiefile": runtime_cookie_file,
         "remote_components": ["ejs:github"],
     }
 
@@ -20,4 +29,3 @@ def get_stream_url(url: str, format_id: str) -> str:
             raise RuntimeError("yt-dlp did not return a stream URL")
 
         return info["url"]
-
