@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
+from app.auth import verify_api_key
 from app.config import STREAMS, UPSTREAM_FORMAT
-from app.services.youtube import get_stream_url
 from app.services.stream import audio_stream
+from app.services.youtube import get_stream_url
 
 
 app = FastAPI(
@@ -19,7 +20,10 @@ async def health():
 
 
 @app.get("/lofi/{stream_name}")
-async def lofi(stream_name: str):
+async def lofi(
+    stream_name: str,
+    _: str = Depends(verify_api_key),
+):
     stream = STREAMS.get(stream_name)
 
     if stream is None:
@@ -47,3 +51,4 @@ async def lofi(stream_name: str):
             "Connection": "keep-alive",
         },
     )
+
