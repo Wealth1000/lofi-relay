@@ -17,7 +17,7 @@ async def audio_stream(url: str) -> AsyncGenerator[bytes, None]:
         "pipe:1",
 
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
     )
 
     try:
@@ -28,6 +28,15 @@ async def audio_stream(url: str) -> AsyncGenerator[bytes, None]:
                 break
 
             yield chunk
+
+        stderr = await process.stderr.read()
+
+        if process.returncode != 0:
+            print(
+                f"FFmpeg exited with code {process.returncode}: "
+                f"{stderr.decode(errors='replace')}",
+                flush=True,
+            )
 
     finally:
         if process.returncode is None:
