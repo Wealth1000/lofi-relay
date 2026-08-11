@@ -4,7 +4,7 @@ UPSTREAM_FORMAT = "91"
 
 YOUTUBE_COOKIES_PATH = os.getenv(
     "YOUTUBE_COOKIES_PATH",
-    "youtube-cookies.txt",
+    "/run/secrets/youtube-cookies.txt",
 )
 
 STREAMS = {
