@@ -8,6 +8,7 @@ def get_stream_url(url: str, format_id: str) -> str:
         "format": format_id,
         "quiet": False,
         "no_warnings": False,
+        "cachedir": False,
         "cookiefile": YOUTUBE_COOKIES_PATH,
         "remote_components": ["ejs:github"],
     }
