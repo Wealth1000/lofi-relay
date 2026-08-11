@@ -6,7 +6,7 @@ from app.config import YOUTUBE_COOKIES_PATH
 def get_stream_url(url: str, format_id: str) -> str:
     options = {
         "format": format_id,
-        "quiet": True,
+        "quiet": False,
         "no_warnings": False,
         "cookiefile": YOUTUBE_COOKIES_PATH,
         "remote_components": ["ejs:github"],
