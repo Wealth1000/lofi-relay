@@ -2,16 +2,21 @@
 
 A small, private audio relay service for livestreams.
 
-Lofi Relay takes a YouTube livestream that exposes only combined video+audio HLS streams, extracts the stream URL with `yt-dlp`, removes the video server-side with FFmpeg, and exposes the resulting audio as an HTTP stream.
+Lofi Relay takes a YouTube livestream, extracts its HLS stream with `yt-dlp`, removes the video server-side with FFmpeg, and exposes the resulting audio as an HTTP stream.
 
-This means the client does **not** download the video portion of the livestream.
+The client therefore receives **audio only** rather than downloading the video portion of the livestream.
 
 ```text
 YouTube livestream
        │
-       │ HLS (video + audio)
+       │ HLS
        ▼
     yt-dlp
+       │
+       │ + YouTube cookies
+       │ + Deno / EJS challenge solver
+       ▼
+    HLS stream
        │
        ▼
     FFmpeg
@@ -36,10 +41,14 @@ YouTube livestream
 * Multiple named livestream endpoints
 * API-key authentication
 * Docker support
+* Deno JavaScript runtime for `yt-dlp`
+* YouTube cookie support
 * Configuration-driven stream list
 * Designed for private/personal use
 
-## Current streams
+---
+
+# Current streams
 
 The service currently exposes:
 
@@ -68,10 +77,12 @@ Adding another stream does not require changing the streaming logic.
 For local development you need:
 
 * Git
-* Python 3.12+ (3.14 is currently used)
+* Python 3.12+
 * `pip`
 * FFmpeg
 * `yt-dlp`
+* Deno
+* A YouTube cookies file
 * Docker (optional, but recommended for deployment testing)
 
 You will also need a GitHub account if you intend to deploy from the repository.
@@ -79,8 +90,6 @@ You will also need a GitHub account if you intend to deploy from the repository.
 ---
 
 # 1. Clone the repository
-
-Clone the private repository:
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/lofi-relay.git
@@ -91,15 +100,8 @@ cd lofi-relay
 
 # 2. Create a Python virtual environment
 
-Create the virtual environment:
-
 ```bash
 python3 -m venv .venv
-```
-
-Activate it:
-
-```bash
 source .venv/bin/activate
 ```
 
@@ -113,31 +115,37 @@ Your shell should now show something similar to:
 
 # 3. Install Python dependencies
 
-Install the requirements:
-
 ```bash
 pip install -r requirements.txt
 ```
 
-If setting up the project from scratch and `requirements.txt` does not yet exist, install the dependencies manually:
+The project uses:
+
+```text
+yt-dlp[default]
+```
+
+rather than the bare `yt-dlp` package because the default extras include components used by the YouTube extractor.
+
+If setting up the project from scratch and `requirements.txt` does not yet exist:
 
 ```bash
 pip install fastapi 'uvicorn[standard]' yt-dlp python-dotenv
 ```
 
-Then generate the requirements file:
+Then:
 
 ```bash
 pip freeze > requirements.txt
 ```
 
-> If you use `zsh`, remember to quote `'uvicorn[standard]'`. Otherwise zsh may interpret the square brackets as globbing syntax.
+> If you use `zsh`, quote `'uvicorn[standard]'`. Otherwise zsh may interpret the square brackets as globbing syntax.
 
 ---
 
 # 4. Install FFmpeg
 
-FFmpeg must be installed separately because it is an operating-system dependency rather than a Python package.
+FFmpeg is an operating-system dependency rather than a Python package.
 
 ### Fedora
 
@@ -159,11 +167,33 @@ ffmpeg -version
 
 ---
 
-# 5. Configure the API key
+# 5. Install Deno
 
-The service uses a private API key to prevent unauthorized users from accessing the streams.
+`yt-dlp` uses a JavaScript runtime to solve YouTube's current JavaScript challenges.
 
-The key is **not stored in the repository**.
+This project uses **Deno**.
+
+Verify whether it is already installed:
+
+```bash
+deno --version
+```
+
+For example:
+
+```text
+deno 2.9.5
+```
+
+If Deno is not installed, install it using the official Deno installation instructions.
+
+The Docker image installs Deno automatically, so this step is only necessary for local development.
+
+---
+
+# 6. Configure the API key
+
+The service uses a private API key to prevent unauthorized access.
 
 Generate a strong key:
 
@@ -191,15 +221,79 @@ LOFI_API_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
 Do **not** commit this file.
 
-The repository's `.gitignore` already excludes:
+The `.gitignore` should exclude:
 
 ```text
 .env
+youtube-cookies.txt
 ```
 
 ---
 
-# 6. Configure streams
+# 7. Configure YouTube cookies
+
+YouTube may require authentication before `yt-dlp` is allowed to obtain livestream formats.
+
+Lofi Relay therefore supports a Netscape-format YouTube cookies file:
+
+```text
+youtube-cookies.txt
+```
+
+## Create the cookies file
+
+1. Open Firefox.
+2. Sign into YouTube using the Google account you want to use for the relay.
+3. Export the YouTube cookies using a reputable browser cookie-export extension.
+4. Save the exported file as:
+
+```text
+youtube-cookies.txt
+```
+
+Place it in the project root:
+
+```text
+lofi-relay/
+├── youtube-cookies.txt
+├── app/
+├── Dockerfile
+└── ...
+```
+
+The cookie file is a **secret**.
+
+Do not:
+
+* commit it to Git
+* upload it to GitHub
+* put it inside the Docker image
+* send it to other people
+* paste its contents into logs or chat
+
+Verify that Git is ignoring it:
+
+```bash
+git status --short --ignored youtube-cookies.txt
+```
+
+You should see:
+
+```text
+!! youtube-cookies.txt
+```
+
+### Cookie lifetime
+
+There is no guaranteed refresh interval.
+
+YouTube session cookies can remain valid for a long time, but they can also become invalid earlier if the session is revoked, the account is signed out, YouTube invalidates the session, or other security changes occur.
+
+If `yt-dlp` starts reporting authentication or bot-verification errors again, export a fresh cookies file and replace the old one.
+
+---
+
+# 8. Configure streams
 
 Streams are defined in:
 
@@ -207,7 +301,7 @@ Streams are defined in:
 app/config.py
 ```
 
-The configuration looks like:
+For example:
 
 ```python
 UPSTREAM_FORMAT = "91"
@@ -243,13 +337,11 @@ The upstream format is kept separately:
 UPSTREAM_FORMAT = "91"
 ```
 
-This means the format can be changed globally without modifying every stream entry.
-
 ---
 
-# 7. Run locally
+# 9. Run locally
 
-From the **project root** (`lofi-relay/`), start FastAPI:
+From the **project root**:
 
 ```bash
 uvicorn app.main:app --reload
@@ -263,11 +355,11 @@ The server should be available at:
 http://127.0.0.1:8000
 ```
 
+Make sure the application can access the configured cookies file before testing a YouTube stream.
+
 ---
 
-# 8. Test the health endpoint
-
-The health endpoint does not require authentication:
+# 10. Test the health endpoint
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -281,7 +373,7 @@ Expected:
 
 ---
 
-# 9. Test authentication
+# 11. Test authentication
 
 Without an API key:
 
@@ -295,19 +387,19 @@ Expected:
 HTTP/1.1 401 Unauthorized
 ```
 
-Now load the key from `.env` into the current shell:
+Load the key from `.env`:
 
 ```bash
 export LOFI_API_KEY="$(grep '^LOFI_API_KEY=' .env | cut -d= -f2-)"
 ```
 
-You can verify that it loaded without printing the secret:
+Verify that it loaded without printing the secret:
 
 ```bash
 [[ -n "$LOFI_API_KEY" ]] && echo "API key loaded"
 ```
 
-Then test the authenticated endpoint:
+Then:
 
 ```bash
 curl -i \
@@ -315,7 +407,7 @@ curl -i \
   http://127.0.0.1:8000/lofi/relax-study
 ```
 
-The response should be:
+Expected:
 
 ```text
 HTTP/1.1 200 OK
@@ -326,7 +418,7 @@ Do not allow `curl` to dump the binary audio into your terminal.
 
 ---
 
-# 10. Play through mpv
+# 12. Play through mpv
 
 With the server running:
 
@@ -354,9 +446,15 @@ mpv \
 
 # Docker
 
-Docker provides a self-contained environment containing Python, FFmpeg, yt-dlp, and the application.
+Docker provides a self-contained environment containing:
 
-The API key remains outside the image.
+* Python
+* FFmpeg
+* Deno
+* yt-dlp
+* the Lofi Relay application
+
+The API key and YouTube cookies remain **outside the Docker image**.
 
 ## Build the image
 
@@ -368,38 +466,127 @@ docker build -t lofi-relay .
 
 ## Run the container
 
-Pass the API key through `.env`:
+Because the YouTube cookies are a secret, mount them into the container rather than copying them into the image.
+
+On Fedora and other SELinux-enabled systems, use the `:Z` mount option:
 
 ```bash
-docker run --rm \
-  --env-file .env \
+docker run -d \
+  --name lofi-relay \
   -p 8000:8000 \
+  --env-file .env \
+  -v "$(pwd)/youtube-cookies.txt:/run/secrets/youtube-cookies.txt:ro,Z" \
   lofi-relay
 ```
 
-The service will be available at:
+The `:ro` flag makes the cookies file read-only inside the container.
 
-```text
-http://127.0.0.1:8000
+The `:Z` flag gives the container the appropriate SELinux label.
+
+Check the container:
+
+```bash
+docker ps
 ```
 
-Test:
+View logs:
+
+```bash
+docker logs -f lofi-relay
+```
+
+You should eventually see:
+
+```text
+Uvicorn running on http://0.0.0.0:8000
+```
+
+---
+
+# Docker health test
 
 ```bash
 curl http://127.0.0.1:8000/health
 ```
 
-Then play a stream:
+Expected:
+
+```json
+{"status":"ok"}
+```
+
+---
+
+# Docker stream test
+
+Load the API key:
 
 ```bash
 export LOFI_API_KEY="$(grep '^LOFI_API_KEY=' .env | cut -d= -f2-)"
+```
 
+Then:
+
+```bash
+curl -i \
+  -H "X-API-Key: $LOFI_API_KEY" \
+  http://127.0.0.1:8000/lofi/relax-study
+```
+
+Expected:
+
+```text
+HTTP/1.1 200 OK
+content-type: audio/aac
+```
+
+You can then play it:
+
+```bash
 mpv \
   --no-video \
   --really-quiet \
   --http-header-fields="X-API-Key: $LOFI_API_KEY" \
   http://127.0.0.1:8000/lofi/relax-study
 ```
+
+---
+
+# Docker and YouTube cookies
+
+The cookies file is deliberately **not copied into the Docker image**.
+
+The image only contains the application and its software dependencies.
+
+At runtime:
+
+```text
+Host
+ │
+ ├── .env
+ │     └── LOFI_API_KEY
+ │
+ └── youtube-cookies.txt
+       │
+       │ read-only mount
+       ▼
+Docker container
+ │
+ └── /run/secrets/youtube-cookies.txt
+       │
+       ▼
+    yt-dlp
+```
+
+This means rebuilding the image does not require rebuilding it whenever the YouTube cookies are refreshed.
+
+Simply replace the host's:
+
+```text
+youtube-cookies.txt
+```
+
+and recreate the container.
 
 ---
 
@@ -424,10 +611,13 @@ lofi-relay/
 ├── Dockerfile
 ├── README.md
 ├── requirements.txt
-└── .env                 # local only — NOT committed
+├── .env                 # local secret — NOT committed
+└── youtube-cookies.txt  # local secret — NOT committed
 ```
 
-## Architecture
+---
+
+# Architecture
 
 ### `config.py`
 
@@ -446,6 +636,8 @@ YouTube URL
     ↓
 yt-dlp
     ↓
+Deno / EJS challenge solver
+    ↓
 HLS URL
 ```
 
@@ -460,7 +652,7 @@ HLS video + audio
        ↓
      FFmpeg
        ↓
-    -vn
+      -vn
        ↓
    AAC audio
 ```
@@ -477,7 +669,7 @@ Validates the `X-API-Key` HTTP header against `LOFI_API_KEY`.
 
 ### `main.py`
 
-Provides the HTTP API and connects all the components together.
+Provides the HTTP API and connects the components together.
 
 ---
 
@@ -528,30 +720,36 @@ audio/aac
 
 # Security
 
-The API key should never be committed to Git.
-
-The following file is intentionally ignored:
+The following files contain secrets and must never be committed:
 
 ```text
 .env
+youtube-cookies.txt
 ```
 
-For local development:
+Check before committing:
 
-```env
-LOFI_API_KEY=...
+```bash
+git status
 ```
 
-For deployment, configure the same variable through the hosting provider's environment/secrets configuration.
+You can also verify that the cookie file is ignored:
 
-Do not put the API key in:
+```bash
+git status --short --ignored youtube-cookies.txt
+```
+
+Never put secrets in:
 
 * `config.py`
 * `main.py`
 * `auth.py`
 * `Dockerfile`
 * Git
-* shell scripts committed to the repository
+* committed shell scripts
+* the Docker image
+
+The YouTube cookies provide access to the authenticated YouTube session from which they were exported. Treat them with the same care as a login session credential.
 
 ---
 
@@ -578,38 +776,6 @@ No changes to `main.py`, `youtube.py`, or `stream.py` are necessary.
 
 # Troubleshooting
 
-## `ModuleNotFoundError: No module named 'app'`
-
-Make sure Uvicorn is being started from the project root:
-
-```text
-lofi-relay/
-```
-
-Run:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-not from:
-
-```text
-lofi-relay/app/
-```
-
----
-
-## `zsh: no matches found: uvicorn[standard]`
-
-Quote the package name:
-
-```bash
-pip install 'uvicorn[standard]'
-```
-
----
-
 ## `401 Unauthorized`
 
 Check that the API key was supplied:
@@ -629,6 +795,64 @@ mpv \
 
 ---
 
+## YouTube says `Sign in to confirm you're not a bot`
+
+The cookies may be missing or invalid.
+
+First test the cookies directly with:
+
+```bash
+yt-dlp \
+  --cookies youtube-cookies.txt \
+  --remote-components ejs:github \
+  -F "YOUTUBE_URL"
+```
+
+If this works and shows available formats, the cookies and Deno/EJS setup are functioning.
+
+If it fails with authentication-related errors, export a fresh cookies file.
+
+---
+
+## `n challenge solving failed`
+
+Make sure Deno is installed:
+
+```bash
+deno --version
+```
+
+Then make sure `yt-dlp` can download the EJS challenge solver:
+
+```bash
+yt-dlp \
+  --cookies youtube-cookies.txt \
+  --remote-components ejs:github \
+  -F "YOUTUBE_URL"
+```
+
+The Docker image installs Deno automatically.
+
+---
+
+## Docker cannot read `youtube-cookies.txt`
+
+On Fedora/SELinux systems, make sure the volume mount uses `:Z`:
+
+```bash
+-v "$(pwd)/youtube-cookies.txt:/run/secrets/youtube-cookies.txt:ro,Z"
+```
+
+Without the SELinux relabeling, the container may receive:
+
+```text
+Permission denied
+```
+
+even when the file permissions on the host appear correct.
+
+---
+
 ## FFmpeg not found
 
 Check:
@@ -637,7 +861,11 @@ Check:
 ffmpeg -version
 ```
 
-Install FFmpeg using your operating system's package manager.
+For Docker, rebuild the image:
+
+```bash
+docker build -t lofi-relay .
+```
 
 ---
 
@@ -666,7 +894,7 @@ The application is designed to run as a Docker container.
 The intended deployment architecture is:
 
 ```text
-Private GitHub repository
+Private Git repository
           ↓
       Host platform
           ↓
@@ -680,17 +908,21 @@ FastAPI          FFmpeg
          │
        yt-dlp
          │
+    Deno / EJS
+         │
          ▼
       YouTube
 ```
 
-The production API key should be configured as an environment variable:
+The production API key should be configured as:
 
 ```text
 LOFI_API_KEY
 ```
 
-The `.env` file should **not** be uploaded to the deployment platform or committed to Git.
+The YouTube cookies should be provided to the container as a secret or read-only mounted file.
+
+The `.env` file and `youtube-cookies.txt` should **not** be committed to Git or baked into the Docker image.
 
 ---
 
@@ -702,7 +934,7 @@ After making changes:
 git status
 ```
 
-Review the changes:
+Review:
 
 ```bash
 git diff
@@ -726,7 +958,7 @@ Push:
 git push
 ```
 
-Before pushing, make sure `.env` is not tracked:
+Before pushing, verify that secrets are not tracked:
 
 ```bash
 git status
@@ -738,9 +970,10 @@ git status
 
 Lofi Relay exists for one simple purpose:
 
-> **Turn livestreams that only expose combined video/audio HLS streams into lightweight audio-only HTTP streams.**
+> **Turn livestreams that expose combined video/audio HLS streams into lightweight audio-only HTTP streams.**
 
 The client only receives the audio it actually needs.
 
 The service is intentionally small and modular. There is no database, user-management system, queue, caching layer, or other infrastructure that isn't necessary for its intended private use.
-> **Currently, development is only focused on Lo-Fi Girl livestreams. It should technically work for others, but has only been tested on Lo-Fi Girl livestreams**
+
+> **Currently, development is focused on Lo-Fi Girl livestreams. The service should technically work with other YouTube livestreams, but those have not been extensively tested.**

@@ -1,4 +1,11 @@
+import os
+
 UPSTREAM_FORMAT = "91"
+
+YOUTUBE_COOKIES_PATH = os.getenv(
+    "YOUTUBE_COOKIES_PATH",
+    "youtube-cookies.txt",
+)
 
 STREAMS = {
     "relax-study": "https://www.youtube.com/watch?v=X4VbdwhkE10",
