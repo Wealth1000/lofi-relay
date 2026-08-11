@@ -6,7 +6,6 @@ from app.config import STREAMS, UPSTREAM_FORMAT
 from app.services.stream import audio_stream
 from app.services.youtube import get_stream_url
 
-
 app = FastAPI(
     title="Lofi Relay",
     description="Audio-only relay for livestreams",
@@ -38,6 +37,8 @@ async def lofi(
             UPSTREAM_FORMAT,
         )
     except Exception as exc:
+        print(f"yt-dlp error: {exc!r}", flush=True)
+
         raise HTTPException(
             status_code=502,
             detail="Unable to obtain livestream",
@@ -51,4 +52,3 @@ async def lofi(
             "Connection": "keep-alive",
         },
     )
-
