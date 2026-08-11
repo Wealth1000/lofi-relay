@@ -10,10 +10,14 @@ RUN apt-get update \
         unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Deno (recommended JS runtime for yt-dlp)
+# Deno
 RUN curl -fsSL https://deno.land/install.sh | sh \
     && mv /root/.deno/bin/deno /usr/local/bin/deno \
     && deno --version
+
+# Deno needs a writable cache on Render
+ENV DENO_DIR=/tmp/deno
+RUN mkdir -p /tmp/deno
 
 COPY requirements.txt .
 
