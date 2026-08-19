@@ -8,7 +8,7 @@ YOUTUBE_COOKIES_PATH = os.getenv(
 )
 
 STREAMS = {
-    "relax-study": "https://www.youtube.com/watch?v=X4VbdwhkE10",
+    "relax-study": "https://www.youtube.com/watch?v=rFZHOHl-L8A",
     "chill-game": "https://www.youtube.com/live/4xDzrJKXOOY",
     "asian-relax-study": "https://www.youtube.com/live/1Tl2FtV06qo",
     "jazz-chill-study": "https://www.youtube.com/live/E2vONfzoyRI",
