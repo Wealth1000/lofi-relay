@@ -1,0 +1,274 @@
+# -------------------------------------------------------------------
+# lofi – play continuous lofi streams
+# -------------------------------------------------------------------
+
+lofi() {
+	local LOFI_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	local base="https://lofi-relay.onrender.com"
+
+	# flag:endpoint:label — one source of truth for help, dispatch and -R
+	local -a streams=(
+		"r:relax-study:Relax / Study"
+		"g:chill-game:Chill Game"
+		"a:asian-relax-study:Asian Relax / Study"
+		"j:jazz-chill-study:Jazz / Chill Study"
+		"d:sleep-dream:Sleep / Dream"
+		"n:rain-sad:Rain / Sad"
+		"p:piano-focus:Piano / Focus"
+	)
+
+	local entry
+
+	if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+		echo "Usage: lofi [option]"
+		echo ""
+		echo "Lofi streams:"
+		for entry in "${streams[@]}"; do
+			printf "  -%-3s  %s\n" "${entry%%:*}" "${entry##*:}"
+		done
+		echo "  -R    Random stream"
+		echo ""
+		echo "Other:"
+		echo "  -health    Check API health"
+		echo "  -h         Show this help"
+		echo ""
+		return 0
+	fi
+
+	if [[ "$1" == "-health" ]]; then
+		# Not named `status`: that is a read-only alias for `$?` in zsh, and
+		# `local status` aborts the function before curl ever runs.
+		local out rc
+		out="$(curl -fsS -m 30 -H "X-API-Key: $LOFI_API_KEY" "$base/health")"
+		rc=$?
+
+		if (( rc == 0 )); then
+			print -r -- "$out"
+		else
+			print -u2 "lofi: health check failed (curl exit $rc)"
+		fi
+
+		return $rc
+	fi
+
+	if [[ -z "$1" ]]; then
+		print -u2 "No stream specified."
+		print -u2 "Use 'lofi -h' for help."
+		return 1
+	fi
+
+	if [[ "$1" == "-R" ]]; then
+		# zsh arrays are 1-indexed, hence the offset — indexing from 0 yields
+		# an empty element and a request to /lofi/ with no stream name.
+		entry="${streams[1 + RANDOM % ${#streams[@]}]}"
+	else
+		local candidate
+		for candidate in "${streams[@]}"; do
+			if [[ "${candidate%%:*}" == "${1#-}" ]]; then
+				entry="$candidate"
+				break
+			fi
+		done
+	fi
+
+	if [[ -z "$entry" ]]; then
+		print -u2 "Unknown option: $1"
+		print -u2 "Use 'lofi -h' for help."
+		return 1
+	fi
+
+	local endpoint="${${entry#*:}%:*}"
+	local label="${entry##*:}"
+
+	local dep
+	for dep in mpv cava curl; do
+		if ! command -v "$dep" > /dev/null 2>&1; then
+			print -u2 "lofi: $dep is not installed."
+			return 1
+		fi
+	done
+
+	local stream_url="$base/lofi/$endpoint"
+	local saved_tty player_pid keepalive_pid cover
+
+	saved_tty="$(stty -g 2> /dev/null)"
+
+	# Restore the tty on any exit. The child PIDs are not known yet, so this
+	# trap is rebuilt (not merely re-armed) as each one is spawned -- see the
+	# note at the second trap for why the PIDs must be baked in.
+	trap "stty '$saved_tty' 2> /dev/null" EXIT INT TERM
+
+	print -r -- "▶ $label"
+
+	# Artwork for the desktop's media widget. mpv-mpris builds `mpris:artUrl`
+	# from --cover-art-files, which takes a *path*, so the image has to exist as
+	# a local file: cover art embedded in the audio stream would only ever reach
+	# mpv's own video window, and that is switched off here.
+	#
+	# mktemp rather than a fixed name -- a predictable /tmp path is a symlink
+	# target, and a fresh path per run also stops the widget from redisplaying a
+	# previous stream's cached image.
+	cover="$(mktemp --suffix=.jpg -t lofi-cover-XXXXXX 2> /dev/null)"
+
+	# Armed before the fetch, so a Ctrl+C mid-download still removes the file.
+	trap "
+		rm -f '$cover'
+		stty '$saved_tty' 2> /dev/null
+	" EXIT INT TERM
+
+	# Fetched before mpv starts so the first play already has artwork. The relay
+	# derives this from the video ID, so it costs no yt-dlp extraction -- only
+	# the spin-up that the stream request pays for anyway.
+	if [[ -z "$cover" ]] || ! curl -fsS -m 90 \
+		-o "$cover" \
+		-H "X-API-Key: $LOFI_API_KEY" \
+		"$base/lofi/$endpoint/thumbnail"
+	then
+		# Artwork is cosmetic: never let it keep the music from playing.
+		print -u2 "lofi: could not fetch artwork — continuing without it."
+		rm -f "$cover"
+		cover=""
+	fi
+
+	# Render spins a free service down after 15 minutes without an *inbound*
+	# request. An in-flight stream is outbound, so it never resets that timer
+	# and the music dies mid-session. Ping /health to keep the service up.
+	#
+	# Deliberately tied to playback: the free tier grants only 750 instance
+	# hours a month (~31 days), so a round-the-clock pinger would exhaust the
+	# quota and get the service suspended.
+	(
+		while sleep 600; do
+			curl -fsS -m 30 -o /dev/null \
+				-H "X-API-Key: $LOFI_API_KEY" \
+				"$base/health" || true
+		done
+	) &
+	keepalive_pid=$!
+
+	trap "
+		kill $keepalive_pid 2> /dev/null
+		rm -f '$cover'
+		stty '$saved_tty' 2> /dev/null
+	" EXIT INT TERM
+
+	local -a mpv_args=(
+		--no-video
+		--really-quiet
+		# Keep mpv's hands off the terminal — cava owns it. This is what the
+		# old `stty sane` cleanup was working around.
+		--no-input-terminal
+		--cache=yes
+		--cache-secs=60
+		--demuxer-max-bytes=64MiB
+		--cache-pause=yes
+		--cache-pause-wait=5
+		--network-timeout=120
+		# Heal brief drops without restarting mpv entirely.
+		--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5
+		--http-header-fields="X-API-Key: $LOFI_API_KEY"
+		# Name the stream in the media widget; without it the notification shows
+		# the bare relay URL.
+		--force-media-title="$label"
+	)
+
+	# Appended only when the fetch succeeded: pointing mpv at a nonexistent file
+	# just logs an error and gains nothing.
+	if [[ -n "$cover" ]]; then
+		mpv_args+=(--cover-art-files="$cover")
+	fi
+
+	# Restart mpv if the stream ends: a spin-up takes about a minute, and the
+	# server may be restarted at any time on the free tier.
+	(
+		trap 'kill $child 2> /dev/null; exit' TERM
+
+		fails=0
+
+		while :; do
+			started=$SECONDS
+
+			mpv "${mpv_args[@]}" "$stream_url" &
+			child=$!
+			wait $child
+
+			if (( SECONDS - started >= 30 )); then
+				fails=0
+			elif (( ++fails >= 10 )); then
+				# Failing instantly and repeatedly means the stream is not
+				# coming back (bad key, bad endpoint, service suspended).
+				print -u2 "lofi: stream keeps failing immediately — giving up."
+				print -u2 "lofi: try 'lofi -health'."
+				break
+			fi
+
+			sleep 3
+		done
+	) &
+	player_pid=$!
+
+	# The PIDs are baked into the trap body rather than referenced as variables,
+	# because zsh unsets a function's locals *before* running its EXIT trap:
+	# `$player_pid` would already be empty when the trap fires, so nothing got
+	# killed. That orphaned the keep-alive pinger, which then held the service
+	# awake around the clock and would burn the free tier's 750 monthly instance
+	# hours -- exhausting them suspends every Free service in the workspace.
+	trap "
+		kill $player_pid $keepalive_pid 2> /dev/null
+		rm -f '$cover'
+		stty '$saved_tty' 2> /dev/null
+	" EXIT INT TERM
+
+	cava
+}
+
+ytcava() {
+	if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+		echo "Usage: ytcava <URL>"
+		echo ""
+		echo "Play audio from a yt-dlp-supported URL with CAVA."
+		echo ""
+		return 0
+	fi
+
+	local url="$1"
+
+	if [[ -z "$url" ]]; then
+		print -u2 "No URL specified."
+		print -u2 "Use 'ytcava -h' for help."
+		return 1
+	fi
+
+	local dep
+	for dep in mpv cava; do
+		if ! command -v "$dep" > /dev/null 2>&1; then
+			print -u2 "ytcava: $dep is not installed."
+			return 1
+		fi
+	done
+
+	local mpv_pid saved_tty
+
+	saved_tty="$(stty -g 2> /dev/null)"
+
+	trap "stty '$saved_tty' 2> /dev/null" EXIT INT TERM
+
+	mpv \
+		--no-video \
+		--really-quiet \
+		--no-input-terminal \
+		--ytdl-format="bestaudio/best" \
+		"$url" &
+
+	mpv_pid=$!
+
+	# Baked in, not referenced: zsh clears function locals before the EXIT trap
+	# runs, so `$mpv_pid` would be empty and mpv would keep playing after ytcava
+	# exited.
+	trap "
+		kill $mpv_pid 2> /dev/null
+		stty '$saved_tty' 2> /dev/null
+	" EXIT INT TERM
+
+	cava
+}
