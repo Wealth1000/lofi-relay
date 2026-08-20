@@ -14,6 +14,7 @@ Lofi Relay uses **yt-dlp** to resolve YouTube livestreams, **Deno** to handle Yo
 * 🎧 FFmpeg audio processing
 * 🐳 Docker support
 * 🔄 Supports long-running livestreams
+* ♻️ Automatic recovery from upstream failures
 * 🚫 Does not download or permanently store livestream media
 
 ---
@@ -64,6 +65,35 @@ Response:
 
 ---
 
+### Stream List
+
+```http
+GET /streams
+```
+
+Requires authentication. Lists the available stream names and their sources.
+
+Example:
+
+```bash
+curl -H "X-API-Key: $LOFI_API_KEY" https://lofi-relay.onrender.com/streams
+```
+
+Response:
+
+```json
+{
+  "streams": [
+    {
+      "name": "relax-study",
+      "source": "https://www.youtube.com/watch?v=rFZHOHl-L8A"
+    }
+  ]
+}
+```
+
+---
+
 ### Lofi Streams
 
 All stream endpoints require authentication.
@@ -76,7 +106,7 @@ GET /lofi/relax-study
 
 Source:
 
-`https://www.youtube.com/watch?v=X4VbdwhkE10`
+`https://www.youtube.com/watch?v=rFZHOHl-L8A`
 
 ---
 
@@ -255,6 +285,72 @@ YOUTUBE_COOKIES_PATH=/etc/secrets/youtube-cookies.txt
 
 The YouTube cookies file should **never be committed to the repository**.
 
+Optional tuning:
+
+| Variable                   | Default | Purpose                                              |
+| -------------------------- | ------- | ---------------------------------------------------- |
+| `LOG_LEVEL`                | `INFO`  | Logging verbosity                                    |
+| `STREAM_URL_TTL`           | `3600`  | Seconds a resolved manifest URL may be reused        |
+| `FFMPEG_MAX_RESTARTS`      | `5`     | Consecutive relay failures before giving up          |
+| `FFMPEG_RESTART_DELAY`     | `2`     | Base restart backoff in seconds (grows per attempt)  |
+| `FFMPEG_RESTART_DELAY_MAX` | `30`    | Backoff ceiling in seconds                           |
+
+---
+
+## Stream Reliability
+
+A livestream is never supposed to end, so the relay treats FFmpeg exiting as a
+fault rather than end-of-stream.
+
+When FFmpeg dies — an expired manifest, a segment 404, YouTube restarting the
+livestream — the relay re-resolves the stream URL and respawns FFmpeg **inside
+the same HTTP response**, with backoff. The client sees one continuous stream
+instead of a disconnect. After `FFMPEG_MAX_RESTARTS` consecutive failures the
+relay gives up and closes the response.
+
+Two supporting details:
+
+* **Manifest URLs are cached** for `STREAM_URL_TTL` seconds. yt-dlp extraction
+  is slow (webpage fetch, player API, Deno JS challenge), so a respawn or a
+  second listener reuses the resolved URL instead of paying for it again.
+  Extraction is serialized, since every call rewrites the same runtime cookie
+  file.
+* **Extraction runs in a worker thread.** It used to block the event loop, which
+  starved every other in-flight relay — those fell behind the HLS live edge and
+  died on expired segments, so starting one stream could kill another.
+
+---
+
+## Free Tier Behaviour
+
+The production deployment runs on Render's free tier, which
+[spins a service down](https://render.com/docs/free) after **15 minutes without
+inbound traffic**:
+
+> Render spins down a Free web service that goes 15 minutes without receiving
+> any inbound traffic. This includes both HTTP requests and WebSocket messages
+> from existing connections.
+
+An in-flight audio stream is *outbound* traffic, so **it does not keep the
+service awake**. Left alone, playback dies roughly 15 minutes into a listening
+session. Render also notes it "might restart a Free web service at any time".
+
+Clients are therefore expected to send a periodic keep-alive request while
+playing:
+
+```bash
+while sleep 600; do
+  curl -fsS -o /dev/null https://lofi-relay.onrender.com/health || true
+done
+```
+
+Keep the pinger tied to playback, and do **not** run it around the clock: the
+free tier grants 750 instance hours per month (~31 days), so a continuous
+pinger would exhaust the quota and get the service suspended.
+
+Spinning back up takes about a minute, so clients should also retry rather than
+treating a dropped stream as fatal.
+
 ---
 
 ## Local Development
@@ -327,7 +423,7 @@ docker run --rm -it \
   --env-file .env \
   -v "$(pwd)/youtube-cookies.txt:/etc/secrets/youtube-cookies.txt:ro,Z" \
   lofi-relay \
-  python -c "from app.services.youtube import get_stream_url; print(get_stream_url('https://www.youtube.com/watch?v=X4VbdwhkE10', '91'))"
+  python -c "from app.services.youtube import get_stream_url; print(get_stream_url('https://www.youtube.com/watch?v=rFZHOHl-L8A', '91'))"
 ```
 
 A successful extraction should return a `manifest.googlevideo.com` HLS playlist URL.
