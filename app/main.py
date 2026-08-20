@@ -1,11 +1,12 @@
 import logging
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 
 from app.auth import verify_api_key
-from app.config import LOG_LEVEL, STREAMS, UPSTREAM_FORMAT
+from app.config import LOG_LEVEL, STREAMS, THUMBNAIL_TTL, UPSTREAM_FORMAT
 from app.services.stream import audio_stream
+from app.services.thumbnail import resolve_thumbnail
 from app.services.youtube import resolve_stream_url
 
 logging.basicConfig(
@@ -37,6 +38,42 @@ async def streams(
             for name, source in STREAMS.items()
         ]
     }
+
+
+@app.get("/lofi/{stream_name}/thumbnail")
+async def thumbnail(
+    stream_name: str,
+    _: str = Depends(verify_api_key),
+):
+    """Serve the stream's YouTube artwork as JPEG.
+
+    Clients need this as a local file, not as bytes inside the audio: mpv
+    publishes `mpris:artUrl` from --cover-art-files, so cover art embedded in the
+    stream itself would never reach a desktop's media widget.
+    """
+    stream = STREAMS.get(stream_name)
+
+    if stream is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown stream: {stream_name}",
+        )
+
+    try:
+        image = await resolve_thumbnail(stream)
+    except Exception as exc:
+        log.exception("Failed to fetch thumbnail for %s", stream)
+
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to obtain thumbnail",
+        ) from exc
+
+    return Response(
+        content=image,
+        media_type="image/jpeg",
+        headers={"Cache-Control": f"public, max-age={int(THUMBNAIL_TTL)}"},
+    )
 
 
 @app.get("/lofi/{stream_name}")

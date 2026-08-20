@@ -7,6 +7,7 @@ Lofi Relay uses **yt-dlp** to resolve YouTube livestreams, **Deno** to handle Yo
 ## Features
 
 * 🎵 Audio-only YouTube livestream relay
+* 🖼️ Serves each stream's YouTube artwork for client media widgets
 * 🔐 API-key authentication
 * ⚡ FastAPI-based HTTP API
 * 🎬 yt-dlp for YouTube stream extraction
@@ -91,6 +92,29 @@ Response:
   ]
 }
 ```
+
+---
+
+### Stream Artwork
+
+```http
+GET /lofi/{stream}/thumbnail
+```
+
+Requires authentication. Returns the stream's YouTube thumbnail as `image/jpeg`.
+
+Example:
+
+```bash
+curl -H "X-API-Key: $LOFI_API_KEY" \
+  -o cover.jpg \
+  https://lofi-relay.onrender.com/lofi/relax-study/thumbnail
+```
+
+The image URL is derived from the video ID, so this endpoint **never runs
+yt-dlp** — artwork never queues behind stream extraction. `maxresdefault.jpg` is
+preferred, falling back to `hqdefault.jpg`, which always exists. Responses are
+cached in memory for `THUMBNAIL_TTL` seconds.
 
 ---
 
@@ -210,6 +234,51 @@ mpv \
 
 ---
 
+## Artwork in the Media Widget
+
+Desktop media widgets (swaync, waybar, GNOME, KDE) read exactly one field:
+`mpris:artUrl` in the player's MPRIS metadata. mpv publishes that from
+`--cover-art-files`, which takes a **local path** — so the artwork has to be
+fetched to a file first:
+
+```bash
+cover="$(mktemp --suffix=.jpg)"
+trap 'rm -f "$cover"' EXIT INT TERM
+
+curl -fsS -H "X-API-Key: $LOFI_API_KEY" \
+  -o "$cover" \
+  https://lofi-relay.onrender.com/lofi/relax-study/thumbnail
+
+mpv \
+  --no-video \
+  --http-header-fields="X-API-Key: $LOFI_API_KEY" \
+  --cover-art-files="$cover" \
+  --force-media-title="Relax / Study" \
+  https://lofi-relay.onrender.com/lofi/relax-study
+```
+
+`--force-media-title` matters too: without it the notification shows the bare
+relay URL instead of a name.
+
+This works with `--no-video` and with the raw ADTS stream the API serves — mpv
+registers the image as an unselected track (`○ Image --vid=1 ... [external]`) and
+mpv-mpris still exports its path. Requires mpv 0.36 or newer for
+`--cover-art-files`.
+
+Embedding the image *in the audio* instead — an MP4 `attached_pic` stream — does
+**not** achieve this, for two independent reasons:
+
+* `mpris:artUrl` is a URI, so it can only point at a file. There is no URI for
+  bytes buried inside a container, which is why mpv-mpris reads
+  `--cover-art-files` rather than the playing stream.
+* The relay writes to a pipe, and MP4 has nowhere to put its `moov` atom on a
+  non-seekable output.
+
+Embedded cover art only feeds mpv's own video window, which audio-only clients
+have switched off.
+
+---
+
 ## Architecture
 
 ```text
@@ -257,6 +326,7 @@ lofi-relay/
 │   └── services/
 │       ├── __init__.py
 │       ├── stream.py
+│       ├── thumbnail.py
 │       └── youtube.py
 │
 ├── Dockerfile
@@ -291,6 +361,9 @@ Optional tuning:
 | -------------------------- | ------- | ---------------------------------------------------- |
 | `LOG_LEVEL`                | `INFO`  | Logging verbosity                                    |
 | `STREAM_URL_TTL`           | `3600`  | Seconds a resolved manifest URL may be reused        |
+| `THUMBNAIL_TTL`            | `21600` | Seconds a fetched thumbnail may be reused            |
+| `THUMBNAIL_TIMEOUT`        | `15`    | Thumbnail fetch timeout in seconds                   |
+| `THUMBNAIL_MAX_BYTES`      | `4MiB`  | Cap on thumbnail data buffered in memory             |
 | `FFMPEG_MAX_RESTARTS`      | `5`     | Consecutive relay failures before giving up          |
 | `FFMPEG_RESTART_DELAY`     | `2`     | Base restart backoff in seconds (grows per attempt)  |
 | `FFMPEG_RESTART_DELAY_MAX` | `30`    | Backoff ceiling in seconds                           |

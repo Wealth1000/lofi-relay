@@ -14,6 +14,17 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 # cached one can get before we re-extract.
 STREAM_URL_TTL = float(os.getenv("STREAM_URL_TTL", "3600"))
 
+# Thumbnail artwork, served so clients can show cover art in their media UI.
+# Thumbnail URLs are derived from the video ID, so serving one never involves
+# yt-dlp -- artwork must not queue behind the slow, serialized extraction path.
+THUMBNAIL_TTL = float(os.getenv("THUMBNAIL_TTL", "21600"))
+THUMBNAIL_TIMEOUT = float(os.getenv("THUMBNAIL_TIMEOUT", "15"))
+
+# Sanity bound on remote image data buffered in memory. Thumbnails run 100-200KB.
+THUMBNAIL_MAX_BYTES = int(
+    os.getenv("THUMBNAIL_MAX_BYTES", str(4 * 1024 * 1024)),
+)
+
 # FFmpeg supervision. A livestream should never end, so an FFmpeg exit is
 # treated as a fault to recover from rather than end-of-stream.
 FFMPEG_MAX_RESTARTS = int(os.getenv("FFMPEG_MAX_RESTARTS", "5"))
