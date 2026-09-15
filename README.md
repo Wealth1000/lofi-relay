@@ -367,6 +367,28 @@ Optional tuning:
 | `FFMPEG_MAX_RESTARTS`      | `5`     | Consecutive relay failures before giving up          |
 | `FFMPEG_RESTART_DELAY`     | `2`     | Base restart backoff in seconds (grows per attempt)  |
 | `FFMPEG_RESTART_DELAY_MAX` | `30`    | Backoff ceiling in seconds                           |
+| `JAR_GIST_ID`              | unset   | Gist ID for the cookie-jar store (see below)         |
+| `JAR_GITHUB_TOKEN`         | unset   | Read/write gist-scoped PAT for the store             |
+| `JAR_PUSH_INTERVAL`        | `600`   | Minimum seconds between jar pushes                   |
+| `JAR_TIMEOUT`              | `15`    | Gist API timeout in seconds                          |
+
+### Cookie-jar store
+
+YouTube rotates session cookies, and yt-dlp writes the refreshed values back
+to its cookiefile. The relay seeds its jar once per container and keeps the
+refreshes, instead of replaying the original export on every extraction —
+replayed stale cookies are what get the session invalidated.
+
+On hosts with an ephemeral filesystem (e.g. Render's free tier), refreshes
+would still be lost on every cold boot. Setting `JAR_GIST_ID` and
+`JAR_GITHUB_TOKEN` adds a private GitHub Gist as a store: on cold boot the
+relay pulls the most recently refreshed jar (falling back to the mounted
+secret when the gist is empty or invalid), and after extractions it pushes
+the jar back when it changed (throttled by `JAR_PUSH_INTERVAL`).
+
+When YouTube rejects the jar outright, `/lofi/*` returns a `503` with
+`YouTube session rejected` in the detail, and the relay stops instead of
+retrying — the fix is a fresh cookie export, not a retry.
 
 ---
 

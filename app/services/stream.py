@@ -8,7 +8,7 @@ from app.config import (
     FFMPEG_RESTART_DELAY,
     FFMPEG_RESTART_DELAY_MAX,
 )
-from app.services.youtube import resolve_stream_url
+from app.services.youtube import ReloginRequiredError, resolve_stream_url
 
 log = logging.getLogger(__name__)
 
@@ -169,6 +169,15 @@ async def audio_stream(
                 format_id,
                 force=force_resolve,
             )
+        except ReloginRequiredError:
+            # Respawning cannot fix dead credentials, and each attempt is
+            # another authenticated request that hastens the next lockout.
+            log.error(
+                "Cookie jar rejected for %s; stopping relay "
+                "(re-export cookies required)",
+                source_url,
+            )
+            break
         except Exception:
             log.exception("Failed to resolve %s", source_url)
 

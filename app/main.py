@@ -7,7 +7,7 @@ from app.auth import verify_api_key
 from app.config import LOG_LEVEL, STREAMS, THUMBNAIL_TTL, UPSTREAM_FORMAT
 from app.services.stream import audio_stream
 from app.services.thumbnail import resolve_thumbnail
-from app.services.youtube import resolve_stream_url
+from app.services.youtube import ReloginRequiredError, resolve_stream_url
 
 logging.basicConfig(
     level=LOG_LEVEL,
@@ -95,6 +95,18 @@ async def lofi(
     # audio_stream() reads, so it starts relaying immediately.
     try:
         await resolve_stream_url(stream, UPSTREAM_FORMAT)
+    except ReloginRequiredError:
+        # Distinct from other 502s so the client can say what actually
+        # happened: this one needs a human to re-export cookies, not a retry.
+        log.error("Cookie jar rejected for %s; re-export required", stream)
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "YouTube session rejected: re-export cookies "
+                "and update the gist or secret"
+            ),
+        )
     except Exception as exc:
         log.exception("Failed to resolve %s", stream)
 

@@ -7,6 +7,24 @@ YOUTUBE_COOKIES_PATH = os.getenv(
     "/etc/secrets/youtube-cookies.txt",
 )
 
+# Remote store for the refreshed cookie jar (a private GitHub Gist). YouTube
+# rotates session cookies and yt-dlp writes the refreshed values back to its
+# cookiefile, so the jar must survive across extractions AND across container
+# restarts -- the free tier's ephemeral filesystem would otherwise throw the
+# refreshes away on every cold boot. Set both to enable; leave unset to run
+# jar-less (extraction then uses only the mounted secret, as before).
+JAR_GIST_ID = os.getenv("JAR_GIST_ID")
+JAR_GITHUB_TOKEN = os.getenv("JAR_GITHUB_TOKEN")
+
+# Minimum seconds between jar pushes to the gist. YouTube nudges cookies on
+# many extractions, so pushing every change would hammer the gist for nothing:
+# only cold boots ever read it back.
+JAR_PUSH_INTERVAL = float(os.getenv("JAR_PUSH_INTERVAL", "600"))
+
+# Timeout for gist API calls. The store is an optimization, never a
+# dependency -- but a hung call must not stall extraction indefinitely.
+JAR_TIMEOUT = float(os.getenv("JAR_TIMEOUT", "15"))
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # How long a resolved YouTube manifest URL may be reused. The URLs carry their
