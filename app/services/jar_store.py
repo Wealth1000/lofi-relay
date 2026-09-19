@@ -1,9 +1,15 @@
 import json
 import logging
+import re
 import urllib.error
 import urllib.request
 
-from app.config import JAR_GIST_ID, JAR_GITHUB_TOKEN, JAR_TIMEOUT
+from app.config import JAR_GITHUB_TOKEN, JAR_GIST_ID, JAR_TIMEOUT
+
+# http.cookiejar uses this regex to decide whether a file is a Netscape
+# cookie jar. Reusing it here keeps the relay's validator in lockstep with
+# the exact rule yt-dlp enforces at extraction time.
+NETSCAPE_MAGIC_RGX = re.compile(r"#(?: Netscape)? HTTP Cookie File")
 
 log = logging.getLogger(__name__)
 
@@ -38,23 +44,37 @@ def _request(method: str, payload: dict | None = None) -> dict:
 def _looks_like_jar(content: str | None) -> bool:
     """Distinguish a real cookie jar from a placeholder or an error page.
 
-    Netscape cookie format is tab-separated with 7 fields per record; the
-    body of a gist holding anything else will not have that shape. The
-    expiration field (index 4) must be a non-negative integer: yt-dlp's
-    http.cookiejar rejects negative values outright and then treats the
-    whole file as not-Netscape-format, so a jar of session cookies written
-    as -1 is not usable.
+    http.cookiejar's Netscape loader is stricter than "has 7 tab-separated
+    fields". It requires the magic header line, and it asserts that the
+    domain_specified flag matches whether the domain starts with ".". A jar
+    that fails either check is rejected by yt-dlp with
+    "does not look like a Netscape format cookies file", which surfaces as a
+    502 on the first stream. This mirrors those rules so a bad jar is caught
+    at cold boot instead of at extraction time.
+
+    The expires field (index 4) must also be a non-negative integer: yt-dlp's
+    loader rejects negative values outright and then treats the whole file as
+    not-Netscape-format, so a jar of session cookies written as -1 is not
+    usable.
     """
     if not content:
         return False
 
-    for line in content.splitlines():
+    lines = content.splitlines()
+    if not lines or not NETSCAPE_MAGIC_RGX.match(lines[0]):
+        return False
+
+    for line in lines[1:]:
         if not line or line.startswith("#"):
             continue
 
         fields = line.split("\t")
         if len(fields) < 7 or ".youtube.com" not in fields[0]:
             continue
+
+        # domain_specified flag must agree with the leading dot.
+        if (fields[1] == "TRUE") != fields[0].startswith("."):
+            return False
 
         try:
             expires = int(fields[4])
