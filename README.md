@@ -26,7 +26,7 @@ Lofi Relay uses **yt-dlp** to resolve YouTube livestreams, **Deno** to handle Yo
 
 Production:
 
-`https://lofi-relay.onrender.com`
+`https://lofi-relay.fly.dev`
 
 ### Authentication
 
@@ -344,16 +344,11 @@ Environment variables:
 
 ```env
 LOFI_API_KEY=your-secret-api-key
-YOUTUBE_COOKIES_PATH=/etc/secrets/youtube-cookies.txt
 ```
 
-`YOUTUBE_COOKIES_PATH` defaults to:
-
-```text
-/etc/secrets/youtube-cookies.txt
-```
-
-The YouTube cookies file should **never be committed to the repository**.
+YouTube cookies are **not** configured via env and are **not** in the image —
+they live in a private GitHub Gist (see below). The image is cookie-free, so
+YouTube rotating session cookies never requires a rebuild or redeploy.
 
 Optional tuning:
 
@@ -368,27 +363,34 @@ Optional tuning:
 | `FFMPEG_RESTART_DELAY`     | `2`     | Base restart backoff in seconds (grows per attempt)  |
 | `FFMPEG_RESTART_DELAY_MAX` | `30`    | Backoff ceiling in seconds                           |
 | `JAR_GIST_ID`              | unset   | Gist ID for the cookie-jar store (see below)         |
-| `JAR_GITHUB_TOKEN`         | unset   | Read/write gist-scoped PAT for the store             |
-| `JAR_PUSH_INTERVAL`        | `600`   | Minimum seconds between jar pushes                   |
+| `JAR_GITHUB_TOKEN`         | unset   | Read-only gist-scoped PAT for the store              |
 | `JAR_TIMEOUT`              | `15`    | Gist API timeout in seconds                          |
 
 ### Cookie-jar store
 
-YouTube rotates session cookies, and yt-dlp writes the refreshed values back
-to its cookiefile. The relay seeds its jar once per container and keeps the
-refreshes, instead of replaying the original export on every extraction —
-replayed stale cookies are what get the session invalidated.
+The cookie jar lives in a private GitHub Gist (file `yt-cookies.txt`) and is
+the **single source of truth**. The relay is read-only on it:
 
-On hosts with an ephemeral filesystem (e.g. Render's free tier), refreshes
-would still be lost on every cold boot. Setting `JAR_GIST_ID` and
-`JAR_GITHUB_TOKEN` adds a private GitHub Gist as a store: on cold boot the
-relay pulls the most recently refreshed jar (falling back to the mounted
-secret when the gist is empty or invalid), and after extractions it pushes
-the jar back when it changed (throttled by `JAR_PUSH_INTERVAL`).
+- **Cold boot:** the relay pulls the jar from the Gist and seeds the runtime
+  copy. If the Gist is unconfigured, unreachable, or holds no usable jar, the
+  relay fails loud at startup (`RuntimeError`) instead of silently serving on
+  a dead jar.
+- **Runtime:** yt-dlp refreshes the runtime copy during extraction. The relay
+  does **not** push back — a scheduled headless-Chromium job
+  (`playwright-gist-updater`) is the sole writer, so there is no race.
+- **Freshness:** the browser job logs into a throwaway Google account in
+  Chromium and re-exports the jar to the Gist on a fixed schedule (every 6h),
+  so the jar is always re-armed before it could go stale — even with no
+  streaming traffic.
 
 When YouTube rejects the jar outright, `/lofi/*` returns a `503` with
 `YouTube session rejected` in the detail, and the relay stops instead of
 retrying — the fix is a fresh cookie export, not a retry.
+
+The browser job never overwrites the Gist on a failed login: it keeps the
+last known-good jar and exits non-zero so the failure is visible. A manual
+re-export to the Gist is the escape hatch if the headless login is
+challenged.
 
 ---
 
@@ -496,10 +498,14 @@ Run it locally:
 ```bash
 docker run --rm -it \
   --env-file .env \
-  -v "$(pwd)/youtube-cookies.txt:/etc/secrets/youtube-cookies.txt:ro,Z" \
   -p 8000:8000 \
   lofi-relay
 ```
+
+The image is cookie-free: at startup it pulls the cookie jar from the Gist
+(`JAR_GIST_ID` / `JAR_GITHUB_TOKEN` in `.env`). If the Gist is unconfigured or
+returns no usable jar, the container exits with a clear error instead of
+serving on a dead jar.
 
 The API will then be available at:
 
@@ -516,7 +522,6 @@ To test yt-dlp independently of FastAPI:
 ```bash
 docker run --rm -it \
   --env-file .env \
-  -v "$(pwd)/youtube-cookies.txt:/etc/secrets/youtube-cookies.txt:ro,Z" \
   lofi-relay \
   python -c "from app.services.youtube import get_stream_url; print(get_stream_url('https://www.youtube.com/watch?v=rFZHOHl-L8A', '91'))"
 ```
@@ -546,11 +551,21 @@ The API key should be treated as a secret.
 Do not:
 
 * Commit `.env` files
-* Commit `youtube-cookies.txt`
 * Put the API key directly into source code
 * Publish the API key in client-side source code intended for public distribution
 
 The production service expects the API key through the `X-API-Key` HTTP header.
+
+---
+
+## Cookie refresh automation
+
+Freshness for the cookie jar comes from a separate, always-on job:
+[`playwright-gist-updater`](../playwright-gist-updater) — a scheduled
+GitHub Actions workflow (free, no credit card required) that logs into a
+throwaway Google account in headless Chromium and re-exports the jar to the
+Gist every 6 hours. See that repo's README for setup, including the
+never-overwrite-on-failure guardrail.
 
 ---
 

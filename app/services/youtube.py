@@ -1,20 +1,19 @@
 import asyncio
 import logging
 import os
-import shutil
 import time
 
 import yt_dlp
 
-from app.config import JAR_PUSH_INTERVAL, STREAM_URL_TTL, YOUTUBE_COOKIES_PATH
+from app.config import STREAM_URL_TTL
 from app.services import jar_store
 
 log = logging.getLogger(__name__)
 
-# yt-dlp refreshes cookies into this writable copy (the mounted secret is
-# read-only on Render). Seeded once per container, never re-copied: replaying
-# the original export on every extraction presents stale session tokens until
-# YouTube kills the session.
+# yt-dlp refreshes cookies into this writable copy (the Gist is remote and
+# read-only here). Seeded once per container from the Gist, never re-copied:
+# replaying the Gist on every extraction would present stale session tokens
+# until the next scheduled browser refresh lands.
 RUNTIME_COOKIE_FILE = "/tmp/youtube-cookies.txt"
 
 # yt-dlp error substrings that mean the session is dead, as opposed to a
@@ -35,11 +34,6 @@ class ReloginRequiredError(RuntimeError):
 # source URL -> (resolved manifest URL, monotonic expiry)
 _cache: dict[str, tuple[str, float]] = {}
 
-# Jar content currently stored in the gist, when known. Used to skip pushes
-# that would change nothing.
-_synced_jar: str | None = None
-_last_jar_push = 0.0
-
 # Extraction is serialized globally, for two reasons: every call touches the
 # same RUNTIME_COOKIE_FILE (concurrent calls would corrupt the cookie jar), and
 # yt-dlp is expensive enough that running several at once on a small instance
@@ -47,65 +41,47 @@ _last_jar_push = 0.0
 _extract_lock = asyncio.Lock()
 
 
-def _seed_cookie_file() -> None:
+def seed_cookie_file() -> None:
     """Populate RUNTIME_COOKIE_FILE once per container.
 
-    Preference order: the jar refreshed by a previous container (pulled from
-    the gist store, survives cold boots), then the mounted secret export
-    (fresh as of the last deploy).
+    The Gist is the single source of truth for the cookie jar. If it is
+    unconfigured, unreachable, or does not hold a usable jar, this fails loud
+    at startup rather than silently falling back to a stale baked cookie --
+    a dead jar would otherwise surface as a 503 on the first stream request.
     """
-    global _synced_jar
-
     if os.path.exists(RUNTIME_COOKIE_FILE):
         return
 
+    if not jar_store.configured():
+        raise RuntimeError(
+            "Cookie jar unavailable: JAR_GIST_ID and JAR_GITHUB_TOKEN are not "
+            "set. Seed the Gist (yt-cookies.txt) or configure the gist store."
+        )
+
     remote = jar_store.pull()
 
-    if remote is not None:
-        log.info("Seeding cookie jar from gist store")
-        _synced_jar = remote
+    if remote is None:
+        raise RuntimeError(
+            "Cookie jar unavailable: the Gist is configured but returned no "
+            "usable jar. Seed yt-cookies.txt in the Gist or check the token."
+        )
 
-        with open(RUNTIME_COOKIE_FILE, "w") as fh:
-            fh.write(remote)
+    log.info("Seeding cookie jar from gist store")
 
-        return
-
-    log.info("Seeding cookie jar from mounted secret")
-    shutil.copyfile(
-        YOUTUBE_COOKIES_PATH,
-        RUNTIME_COOKIE_FILE,
-    )
+    with open(RUNTIME_COOKIE_FILE, "w") as fh:
+        fh.write(remote)
 
 
 def _sync_jar() -> None:
-    """Push the refreshed jar to the gist store when it changed.
+    """Intentionally a no-op.
 
-    Throttled by JAR_PUSH_INTERVAL: the point of failure this guards against
-    is a cold boot, so a jar a few minutes stale on the gist is fine.
+    The scheduled playwright-gist-updater job is the sole writer to the Gist.
+    Pushing from here too would race it: both would PATCH the same file, and a
+    lost race would discard either side's refresh for no benefit. The job
+    runs on a fixed cadence that bounds staleness better than an unbounded
+    push-per-extraction ever could, so the relay stays read-only on the Gist.
     """
-    global _synced_jar, _last_jar_push
-
-    if not jar_store.configured():
-        return
-
-    try:
-        with open(RUNTIME_COOKIE_FILE) as fh:
-            content = fh.read()
-    except OSError:
-        log.exception("Failed to read runtime cookie jar for sync")
-        return
-
-    if content == _synced_jar:
-        return
-
-    now = time.monotonic()
-
-    if now - _last_jar_push < JAR_PUSH_INTERVAL:
-        return
-
-    if jar_store.push(content):
-        _synced_jar = content
-        _last_jar_push = now
+    return
 
 
 def get_stream_url(url: str, format_id: str) -> str:
@@ -113,7 +89,7 @@ def get_stream_url(url: str, format_id: str) -> str:
 
     Blocking. Prefer resolve_stream_url() from async code.
     """
-    _seed_cookie_file()
+    seed_cookie_file()
 
     options = {
         "format": format_id,

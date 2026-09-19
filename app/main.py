@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
@@ -7,7 +8,11 @@ from app.auth import verify_api_key
 from app.config import LOG_LEVEL, STREAMS, THUMBNAIL_TTL, UPSTREAM_FORMAT
 from app.services.stream import audio_stream
 from app.services.thumbnail import resolve_thumbnail
-from app.services.youtube import ReloginRequiredError, resolve_stream_url
+from app.services.youtube import (
+    ReloginRequiredError,
+    resolve_stream_url,
+    seed_cookie_file,
+)
 
 logging.basicConfig(
     level=LOG_LEVEL,
@@ -16,10 +21,30 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pull the cookie jar from the Gist before accepting traffic.
+
+    The jar is the single source of truth, so a dead, missing, or
+    unconfigured jar is a deploy-time failure, not a first-request 503.
+    uvicorn exits non-zero if this raises, and Render's health check then
+    fails the new deploy instead of routing traffic to a broken instance.
+    """
+    try:
+        seed_cookie_file()
+    except RuntimeError:
+        log.exception("Cookie jar unavailable at startup")
+        raise
+
+    yield
+
+
 app = FastAPI(
     title="Lofi Relay",
     description="Audio-only relay for livestreams",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 

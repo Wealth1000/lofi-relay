@@ -25,6 +25,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
+# Cookies are no longer baked into the image. They live in a private GitHub
+# Gist and are pulled at cold boot, so YouTube rotating session cookies never
+# requires rebuilding or redeploying this image.
 EXPOSE 8000
 
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

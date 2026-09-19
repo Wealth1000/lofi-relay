@@ -4,7 +4,7 @@
 
 lofi() {
 	local LOFI_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-	local base="https://lofi-relay.onrender.com"
+	local base="https://lofi-relay.fly.dev"
 
 	# flag:endpoint:label — one source of truth for help, dispatch and -R
 	local -a streams=(
