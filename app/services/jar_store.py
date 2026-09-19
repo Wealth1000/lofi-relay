@@ -39,16 +39,34 @@ def _looks_like_jar(content: str | None) -> bool:
     """Distinguish a real cookie jar from a placeholder or an error page.
 
     Netscape cookie format is tab-separated with 7 fields per record; the
-    body of a gist holding anything else will not have that shape.
+    body of a gist holding anything else will not have that shape. The
+    expiration field (index 4) must be a non-negative integer: yt-dlp's
+    http.cookiejar rejects negative values outright and then treats the
+    whole file as not-Netscape-format, so a jar of session cookies written
+    as -1 is not usable.
     """
     if not content:
         return False
 
-    return any(
-        line.count("\t") >= 6 and ".youtube.com" in line
-        for line in content.splitlines()
-        if line and not line.startswith("#")
-    )
+    for line in content.splitlines():
+        if not line or line.startswith("#"):
+            continue
+
+        fields = line.split("\t")
+        if len(fields) < 7 or ".youtube.com" not in fields[0]:
+            continue
+
+        try:
+            expires = int(fields[4])
+        except ValueError:
+            return False
+
+        if expires < 0:
+            return False
+
+        return True
+
+    return False
 
 
 def pull() -> str | None:

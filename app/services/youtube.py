@@ -42,15 +42,26 @@ _extract_lock = asyncio.Lock()
 
 
 def seed_cookie_file() -> None:
-    """Populate RUNTIME_COOKIE_FILE once per container.
+    """Populate RUNTIME_COOKIE_FILE, re-pulling from the Gist when it is stale.
 
     The Gist is the single source of truth for the cookie jar. If it is
     unconfigured, unreachable, or does not hold a usable jar, this fails loud
     at startup rather than silently falling back to a stale baked cookie --
     a dead jar would otherwise surface as a 503 on the first stream request.
+
+    The runtime file is not trusted just because it exists: a jar written by
+    a previous run (or a corrupted export) is re-pulled from the Gist, so a
+    bad Gist never has to survive as a bad runtime file across restarts.
     """
     if os.path.exists(RUNTIME_COOKIE_FILE):
-        return
+        try:
+            with open(RUNTIME_COOKIE_FILE) as fh:
+                if jar_store._looks_like_jar(fh.read()):
+                    return
+        except OSError:
+            pass
+
+        log.info("Runtime cookie jar is invalid; re-pulling from gist store")
 
     if not jar_store.configured():
         raise RuntimeError(

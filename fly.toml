@@ -1,0 +1,32 @@
+app = "lofi-relay"
+primary_region = "iad"
+
+[build]
+dockerfile = "Dockerfile"
+
+[http_service]
+internal_port = 8000
+force_https = true
+auto_stop_machines = false
+auto_start_machines = true
+
+[[http_service.checks]]
+grace_period = "30s"
+interval = "10s"
+method = "GET"
+path = "/health"
+protocol = "http"
+timeout = "5s"
+type = "http"
+
+[env]
+LOG_LEVEL = "INFO"
+STREAM_URL_TTL = "3600"
+THUMBNAIL_TTL = "21600"
+THUMBNAIL_TIMEOUT = "15"
+THUMBNAIL_MAX_BYTES = "4MiB"
+FFMPEG_MAX_RESTARTS = "5"
+FFMPEG_RESTART_DELAY = "2"
+FFMPEG_RESTART_DELAY_MAX = "30"
+JAR_PUSH_INTERVAL = "600"
+JAR_TIMEOUT = "15"
