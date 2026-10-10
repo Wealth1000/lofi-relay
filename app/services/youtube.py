@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 import time
 
 import yt_dlp
@@ -25,6 +26,19 @@ _LOGIN_MARKERS = (
     "login required",
     "confirm your age",
 )
+
+# yt-dlp error substrings that indicate transient failures that should be retried
+# with exponential backoff (rate limiting, temporary bans, etc.)
+_TRANSIENT_MARKERS = (
+    "too many requests",
+    "rate limit",
+    "quota exceeded",
+    "429",
+    "403",
+)
+
+# Number of times to retry transient failures before giving up
+_MAX_TRANSIENT_RETRIES = 3
 
 
 class ReloginRequiredError(RuntimeError):
@@ -95,6 +109,12 @@ def _sync_jar() -> None:
     return
 
 
+def _is_transient_error(exc: yt_dlp.utils.DownloadError) -> bool:
+    """Check if an error is transient (rate limiting, temporary bans) and retryable."""
+    message = str(exc).lower()
+    return any(marker in message for marker in _TRANSIENT_MARKERS)
+
+
 def get_stream_url(url: str, format_id: str) -> str:
     """Resolve a livestream URL to a playable manifest URL.
 
@@ -111,25 +131,54 @@ def get_stream_url(url: str, format_id: str) -> str:
         "remote_components": ["ejs:github"],
     }
 
-    try:
-        with yt_dlp.YoutubeDL(options) as ydl:
-            info = ydl.extract_info(url, download=False)
-    except yt_dlp.utils.DownloadError as exc:
-        message = str(exc).lower()
+    last_exc = None
+    for attempt in range(_MAX_TRANSIENT_RETRIES + 1):
+        try:
+            with yt_dlp.YoutubeDL(options) as ydl:
+                info = ydl.extract_info(url, download=False)
 
-        if any(marker in message for marker in _LOGIN_MARKERS):
-            raise ReloginRequiredError(
-                "YouTube rejected the cookie jar; a fresh export is needed"
-            ) from exc
+            if "url" not in info:
+                raise RuntimeError("yt-dlp did not return a stream URL")
 
-        raise
+            _sync_jar()
 
-    if "url" not in info:
-        raise RuntimeError("yt-dlp did not return a stream URL")
+            return info["url"]
 
-    _sync_jar()
+        except yt_dlp.utils.DownloadError as exc:
+            message = str(exc).lower()
 
-    return info["url"]
+            # Check for login-required errors first (these need cookie refresh)
+            if any(marker in message for marker in _LOGIN_MARKERS):
+                raise ReloginRequiredError(
+                    "YouTube rejected the cookie jar; a fresh export is needed"
+                ) from exc
+
+            last_exc = exc
+
+            # For transient errors, retry with exponential backoff and jitter
+            if _is_transient_error(exc) and attempt < _MAX_TRANSIENT_RETRIES:
+                # Exponential backoff with jitter: base delay increases, plus random jitter
+                base_delay = 2 ** attempt
+                jitter = random.uniform(0.5, 1.5)
+                delay = base_delay + jitter
+
+                log.warning(
+                    "Transient error extracting %s (attempt %d/%d): %s. Retrying in %.1fs",
+                    url,
+                    attempt + 1,
+                    _MAX_TRANSIENT_RETRIES + 1,
+                    str(exc)[:100],
+                    delay,
+                )
+
+                # Sleep outside the yt-dlp context to allow cookies to rotate
+                time.sleep(delay)
+                continue
+
+            raise
+
+    # Should never reach here, but just in case
+    raise last_exc
 
 
 def _cached(url: str) -> str | None:
