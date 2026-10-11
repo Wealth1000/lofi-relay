@@ -5,10 +5,17 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 
 from app.auth import verify_api_key
-from app.config import LOG_LEVEL, STREAMS, THUMBNAIL_TTL, UPSTREAM_FORMAT
+from app.config import (
+    LOG_LEVEL,
+    RATE_LIMIT_COOLDOWN,
+    STREAMS,
+    THUMBNAIL_TTL,
+    UPSTREAM_FORMAT,
+)
 from app.services.stream import audio_stream
 from app.services.thumbnail import resolve_thumbnail
 from app.services.youtube import (
+    RateLimitedError,
     ReloginRequiredError,
     resolve_stream_url,
     seed_cookie_file,
@@ -132,6 +139,17 @@ async def lofi(
                 "and update the gist or secret"
             ),
         )
+    except RateLimitedError as exc:
+        # Worth its own status rather than a 502: the client can honour
+        # Retry-After, and a generic error here invites a retry storm that
+        # only extends the block for every other listener.
+        log.warning("YouTube rate limit for %s: %s", stream, exc)
+
+        raise HTTPException(
+            status_code=503,
+            detail="YouTube is rate-limiting this server; retry shortly",
+            headers={"Retry-After": str(int(RATE_LIMIT_COOLDOWN))},
+        ) from exc
     except Exception as exc:
         log.exception("Failed to resolve %s", stream)
 

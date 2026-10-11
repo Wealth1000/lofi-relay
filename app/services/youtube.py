@@ -1,12 +1,12 @@
 import asyncio
 import logging
 import os
-import random
 import time
 
 import yt_dlp
+from yt_dlp.networking.impersonate import ImpersonateTarget
 
-from app.config import STREAM_URL_TTL
+from app.config import RATE_LIMIT_COOLDOWN, STREAM_URL_TTL
 from app.services import jar_store
 
 log = logging.getLogger(__name__)
@@ -17,8 +17,8 @@ log = logging.getLogger(__name__)
 # until the next scheduled browser refresh lands.
 RUNTIME_COOKIE_FILE = "/tmp/youtube-cookies.txt"
 
-# yt-dlp error substrings that mean the session is dead, as opposed to a
-# transient extraction failure worth retrying. Matched case-insensitively.
+# yt-dlp error substrings that mean the session is dead rather than merely
+# refused by a rate limiter. Matched case-insensitively.
 _LOGIN_MARKERS = (
     "sign in to confirm",
     "not a bot",
@@ -27,22 +27,31 @@ _LOGIN_MARKERS = (
     "confirm your age",
 )
 
-# yt-dlp error substrings that indicate transient failures that should be retried
-# with exponential backoff (rate limiting, temporary bans, etc.)
-_TRANSIENT_MARKERS = (
+# Substrings that mean YouTube throttled this egress IP rather than rejecting
+# the session. Matched against the raised message *and* the warnings yt-dlp
+# emitted during the attempt: yt-dlp folds the 429/403 into warnings and then
+# raises a bare "Failed to extract any player response" that carries no status
+# code, so the exception alone can never tell a rate limit apart.
+_RATE_LIMIT_MARKERS = (
+    "http error 429",
+    "http error 403",
     "too many requests",
     "rate limit",
     "quota exceeded",
-    "429",
-    "403",
 )
 
-# Number of times to retry transient failures before giving up
-_MAX_TRANSIENT_RETRIES = 3
+# Shared by every stream: the limit is keyed on the server's egress IP, so one
+# blocked resolve means the next one would be blocked too. Written while the
+# global extraction lock is held, and read before any YouTube request is made.
+_rate_limited_until = 0.0
 
 
 class ReloginRequiredError(RuntimeError):
     """YouTube rejected the cookie jar; a fresh export is needed."""
+
+
+class RateLimitedError(RuntimeError):
+    """YouTube is rate-limiting this server's egress IP; we are backing off."""
 
 
 # source URL -> (resolved manifest URL, monotonic expiry)
@@ -109,10 +118,67 @@ def _sync_jar() -> None:
     return
 
 
-def _is_transient_error(exc: yt_dlp.utils.DownloadError) -> bool:
-    """Check if an error is transient (rate limiting, temporary bans) and retryable."""
-    message = str(exc).lower()
-    return any(marker in message for marker in _TRANSIENT_MARKERS)
+class _YDLCapture:
+    """Routes yt-dlp's message stream into this module's logger.
+
+    Supplied as the `logger` param, which takes precedence over stderr. That
+    redirect is the point: yt-dlp reports the HTTP status behind a failure as a
+    warning and then raises an exception that omits it, so the warning stream
+    is the only place a 429/403 survives long enough to act on.
+    """
+
+    def __init__(self) -> None:
+        self.warnings: list[str] = []
+
+    def debug(self, message: str) -> None:
+        log.debug(message)
+
+    def warning(self, message: str) -> None:
+        self.warnings.append(message)
+        log.warning(message)
+
+    def error(self, message: str) -> None:
+        log.error(message)
+
+
+_impersonation_known = False
+_impersonation_target: ImpersonateTarget | None = None
+
+
+def _impersonate_target() -> ImpersonateTarget | None:
+    """Return a Chrome impersonation target, or None when curl_cffi is unusable.
+
+    Without it yt-dlp sends a stock Python TLS/HTTP2 fingerprint, which is what
+    YouTube's bot checks score hardest and the usual trigger for the player API
+    returning403. Probed once because yt-dlp raises from YoutubeDL() for a
+    target that has no handler rather than falling back, so the option is only
+    attached when it will actually take effect.
+    """
+    global _impersonation_known, _impersonation_target
+
+    if not _impersonation_known:
+        candidate = ImpersonateTarget.from_str("chrome")
+
+        try:
+            yt_dlp.YoutubeDL({"impersonate": candidate})
+        except Exception:
+            log.error(
+                "Browser impersonation unavailable; YouTube requests will use a "
+                "default fingerprint. Install a curl_cffi build supported by "
+                "this yt-dlp version to enable it."
+            )
+        else:
+            _impersonation_target = candidate
+
+        _impersonation_known = True
+
+    return _impersonation_target
+
+
+def _is_rate_limited(message: str, warnings: list[str]) -> bool:
+    """Whether YouTube throttled this egress IP rather than rejecting the session."""
+    text = "\n".join((message, *warnings)).lower()
+    return any(marker in text for marker in _RATE_LIMIT_MARKERS)
 
 
 def get_stream_url(url: str, format_id: str) -> str:
@@ -120,8 +186,22 @@ def get_stream_url(url: str, format_id: str) -> str:
 
     Blocking. Prefer resolve_stream_url() from async code.
     """
+    global _rate_limited_until
+
+    # Back off before spending a cookie refresh or a YouTube request we already
+    # know will be refused. A 429's timer restarts on every attempt, so probing
+    # again only extends the block -- for this stream and for every other one
+    # sharing this server's egress IP.
+    remaining = _rate_limited_until - time.monotonic()
+
+    if remaining > 0:
+        raise RateLimitedError(
+            f"YouTube rate limit still active ({remaining:.0f}s left)"
+        )
+
     seed_cookie_file()
 
+    captured = _YDLCapture()
     options = {
         "format": format_id,
         "quiet": True,
@@ -129,56 +209,42 @@ def get_stream_url(url: str, format_id: str) -> str:
         "cachedir": False,
         "cookiefile": RUNTIME_COOKIE_FILE,
         "remote_components": ["ejs:github"],
+        "logger": captured,
     }
 
-    last_exc = None
-    for attempt in range(_MAX_TRANSIENT_RETRIES + 1):
-        try:
-            with yt_dlp.YoutubeDL(options) as ydl:
-                info = ydl.extract_info(url, download=False)
+    impersonation = _impersonate_target()
 
-            if "url" not in info:
-                raise RuntimeError("yt-dlp did not return a stream URL")
+    if impersonation is not None:
+        options["impersonate"] = impersonation
 
-            _sync_jar()
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except yt_dlp.utils.DownloadError as exc:
+        message = str(exc).lower()
 
-            return info["url"]
+        # Login markers first: a dead session needs a human, not a backoff.
+        if any(marker in message for marker in _LOGIN_MARKERS):
+            raise ReloginRequiredError(
+                "YouTube rejected the cookie jar; a fresh export is needed"
+            ) from exc
 
-        except yt_dlp.utils.DownloadError as exc:
-            message = str(exc).lower()
+        if _is_rate_limited(message, captured.warnings):
+            _rate_limited_until = time.monotonic() + RATE_LIMIT_COOLDOWN
 
-            # Check for login-required errors first (these need cookie refresh)
-            if any(marker in message for marker in _LOGIN_MARKERS):
-                raise ReloginRequiredError(
-                    "YouTube rejected the cookie jar; a fresh export is needed"
-                ) from exc
+            raise RateLimitedError(
+                "YouTube rate-limited this server; "
+                f"backing off for {RATE_LIMIT_COOLDOWN:.0f}s"
+            ) from exc
 
-            last_exc = exc
+        raise
 
-            # For transient errors, retry with exponential backoff and jitter
-            if _is_transient_error(exc) and attempt < _MAX_TRANSIENT_RETRIES:
-                # Exponential backoff with jitter: base delay increases, plus random jitter
-                base_delay = 2 ** attempt
-                jitter = random.uniform(0.5, 1.5)
-                delay = base_delay + jitter
+    if "url" not in info:
+        raise RuntimeError("yt-dlp did not return a stream URL")
 
-                log.warning(
-                    "Transient error extracting %s (attempt %d/%d): %s. Retrying in %.1fs",
-                    url,
-                    attempt + 1,
-                    _MAX_TRANSIENT_RETRIES + 1,
-                    str(exc)[:100],
-                    delay,
-                )
+    _sync_jar()
 
-                # Sleep outside the yt-dlp context to allow cookies to rotate
-                time.sleep(delay)
-                continue
-
-            raise
-
-    # Should never reach here, but just in case
-    raise last_exc
+    return info["url"]
 
 
 def _cached(url: str) -> str | None:

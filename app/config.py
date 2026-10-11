@@ -19,6 +19,11 @@ JAR_TIMEOUT = float(os.getenv("JAR_TIMEOUT", "15"))
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
+# How long to stop calling YouTube after it rate-limits this server's egress
+# IP. The 429 budget is keyed per IP and its timer restarts on every attempt,
+# so retrying during the window extends the block for every stream at once.
+RATE_LIMIT_COOLDOWN = float(os.getenv("RATE_LIMIT_COOLDOWN", "120"))
+
 # How long a resolved YouTube manifest URL may be reused. The URLs carry their
 # own `expire` parameter (usually several hours); this only bounds how stale a
 # cached one can get before we re-extract.
