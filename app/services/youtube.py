@@ -210,6 +210,18 @@ def get_stream_url(url: str, format_id: str) -> str:
         "cookiefile": RUNTIME_COOKIE_FILE,
         "remote_components": ["ejs:github"],
         "logger": captured,
+        # Client is pinned rather than left to yt-dlp's default for two
+        # reasons. The default `web` client is the one YouTube challenges
+        # hardest from a datacenter IP, and it serves a DASH ladder whose
+        # format ids (229-270) omit 91 entirely, so the pinned UPSTREAM_FORMAT
+        # would fail format selection even when extraction succeeds. `mweb`
+        # and `web_embedded` are the clients that return the muxed live HLS
+        # ladder 91-96; either satisfies the pin, so listing both gives a
+        # fallback. The usual advice of `tv,web_safari` does not apply here:
+        # those clients return no formats at all for a live stream.
+        "extractor_args": {
+            "youtube": {"player_client": ["mweb", "web_embedded"]}
+        },
     }
 
     impersonation = _impersonate_target()
