@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>lofi-relay migration — owner setup guide</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2330;
+    --ink: #e6edf3; --dim: #8b949e; --faint: #57606a;
+    --accent: #58a6ff; --ok: #3fb950; --warn: #d29922; --fail: #f85149;
+    --code-bg: #0a0e14; --border: #30363d;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans);
+         margin: 0; line-height: 1.55; font-size: 15px; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 32px; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  h1 .sub { color: var(--dim); font-weight: 400; font-size: 16px; }
+  .meta { color: var(--faint); font-size: 13px; margin-top: 10px; }
+  .meta code { color: var(--dim); }
+
+  h2 { font-size: 19px; margin: 40px 0 14px; letter-spacing: -0.01em;
+       display: flex; align-items: center; gap: 10px; }
+  h2 .num { background: var(--accent); color: #04101f; font-family: var(--mono);
+            font-size: 13px; font-weight: 700; width: 26px; height: 26px;
+            border-radius: 6px; display: inline-flex; align-items: center;
+            justify-content: center; flex: 0 0 auto; }
+
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 10px; padding: 18px 20px; margin: 14px 0; }
+  .card p { margin: 8px 0; }
+
+  .banner { border-left: 4px solid var(--accent); }
+  .gate   { border-left: 4px solid var(--warn); }
+  .okbox  { border-left: 4px solid var(--ok); }
+  .failbox{ border-left: 4px solid var(--fail); }
+  .note   { border-left: 4px solid var(--faint); color: var(--dim); }
+  .banner .tag, .gate .tag, .okbox .tag, .failbox .tag, .note .tag {
+            font-family: var(--mono); font-size: 11px; font-weight: 700;
+            letter-spacing: 0.1em; text-transform: uppercase; display: block;
+            margin-bottom: 8px; }
+  .banner .tag { color: var(--accent); }
+  .gate   .tag { color: var(--warn); }
+  .okbox  .tag { color: var(--ok); }
+  .failbox .tag{ color: var(--fail); }
+  .note   .tag { color: var(--faint); }
+
+  pre { background: var(--code-bg); border: 1px solid var(--border);
+        border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+        font-family: var(--mono); font-size: 13px; line-height: 1.5; margin: 10px 0; }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code { background: var(--panel2); padding: 1px 6px;
+        border-radius: 4px; color: #a5d6ff; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th { text-align: left; color: var(--dim); font-weight: 600; padding: 8px 12px;
+       border-bottom: 1px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid #21262d; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+
+  .flow { display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; margin: 18px 0; }
+  .flow .box { flex: 1 1 200px; background: var(--panel); border: 1px solid var(--border);
+               border-radius: 10px; padding: 14px; min-width: 180px; }
+  .flow .box .t { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .flow .box .d { font-size: 12.5px; color: var(--dim); }
+  .flow .arrow { align-self: center; color: var(--faint); font-size: 20px; }
+
+  .pill { display: inline-block; font-family: var(--mono); font-size: 11px;
+          padding: 2px 9px; border-radius: 20px; border: 1px solid var(--border);
+          color: var(--dim); margin-right: 6px; }
+  .pill.ok { color: var(--ok); border-color: var(--ok); }
+  .pill.no { color: var(--fail); border-color: var(--fail); }
+
+  ol.steps > li { margin: 14px 0; }
+  .kbd { font-family: var(--mono); font-size: 12px; background: var(--panel2);
+         border: 1px solid var(--border); border-radius: 5px; padding: 1px 7px; }
+  footer { margin-top: 56px; border-top: 1px solid var(--border); padding-top: 18px;
+           color: var(--faint); font-size: 13px; }
+  a { color: var(--accent); }
+  ul { padding-left: 22px; } li { margin: 5px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>lofi-relay migration <span class="sub">— owner setup guide</span></h1>
+  <div class="meta">
+    Companion to <a href="https://github.com/Wealth1000/lofi-relay/issues/3">issue&nbsp;#3</a>
+    · branch <code>master</code> · no card needed anywhere · no secrets stored in this document
+  </div>
+</header>
+
+<div class="card banner">
+  <span class="tag">What changed, in one breath</span>
+  <p>Live testing on 2026-10-13 proved that YouTube's live ladder carries
+  <b>audio-only HLS renditions</b> (itag 234/233) whose segments are pure AAC —
+  no video track, ~130&nbsp;kb/s. So the entire "relay downloads video, strips it,
+  ships AAC" job disappears: <b>no one anywhere downloads video bytes.</b></p>
+  <p>What remains — resolving the signed m3u8 URLs — moves off Render's flagged
+  static IP onto <b>GitHub Actions</b> (free, no card, <i>rotating</i> runner IPs,
+  uncapped minutes on this public repo). It publishes a small JSON to this repo;
+  your <code>.lofi</code> client plays the signed m3u8 straight from YouTube's CDN.
+  The Cloudflare Worker is an optional hardening hop, not a requirement.</p>
+</div>
+
+<div class="flow">
+  <div class="box">
+    <div class="t">① GitHub Actions cron</div>
+    <div class="d">Every 30 min · rotating egress IPs · cookie-jar Gist as armor ·
+    yt-dlp URL-only (zero media bytes) · free, no card</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="box">
+    <div class="t">② <code>data/streams.json</code></div>
+    <div class="d">Committed to this public repo by the workflow itself ·
+    last-good preserved on failure · <code>status: ok | stale</code></div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="box">
+    <div class="t">③ your <code>.lofi</code></div>
+    <div class="d">One fetch · mpv plays the signed m3u8 · audio-only ≈ 16&nbsp;KB/s ·
+    no pinger, no API key, no relay in the path</div>
+  </div>
+</div>
+
+<div class="card note">
+  <span class="tag">Who does what</span>
+  <table>
+    <tr><th>Agent (issue #3)</th><th>You (this guide)</th></tr>
+    <tr>
+      <td>Resolver script, the workflow, <code>data/streams.json</code> schema,
+      rewritten <code>.lofi</code>, Worker hop (if the gate demands it), tests</td>
+      <td>The 2 repo secrets (Step 1) · first run (Step 2) · the second-IP gate (Step 3) ·
+      optional Cloudflare account (Step 5) · cutover &amp; Render teardown (Step 6)</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="num">1</span> Add the two repo secrets</h2>
+<div class="card">
+  <p>The workflow needs the <b>existing</b> cookie-jar pair — the same values your
+  Render deployment already uses. No new Gist, no new token: the JSON is published
+  to this repo via the workflow's built-in token.</p>
+  <table>
+    <tr><th>Secret</th><th>What it is</th><th>Where you already have it</th></tr>
+    <tr>
+      <td><code>JAR_GIST_ID</code></td>
+      <td>The cookie-jar Gist's ID (32-hex, from its URL
+      <code>github.com/gists/<i>abcdefgh…</i></code>)</td>
+      <td>Render → lofi-relay → Environment, or the playwright-gist-updater repo</td>
+    </tr>
+    <tr>
+      <td><code>JAR_GITHUB_TOKEN</code></td>
+      <td>Read-only gist-scoped PAT that can read the jar</td>
+      <td>Same places, same variable</td>
+    </tr>
+  </table>
+  <p>CLI (fastest, values pasted from your password manager / Render env):</p>
+<pre>gh secret set JAR_GIST_ID      -R Wealth1000/lofi-relay --body "PASTE_GIST_ID"
+gh secret set JAR_GITHUB_TOKEN -R Wealth1000/lofi-relay --body "PASTE_TOKEN"</pre>
+  <p>…or the UI: repo → <span class="kbd">Settings</span> →
+  <span class="kbd">Secrets and variables</span> → <span class="kbd">Actions</span> →
+  <span class="kbd">New repository secret</span>. Secrets are never printed into logs;
+  the workflow reads them into the runner's memory only.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="num">2</span> Trigger the first resolver run</h2>
+<div class="card">
+  <p>Once the implementation from issue&nbsp;#3 lands (it adds the workflow),
+  either wait for the 30-minute cron or force it now:</p>
+  <ul>
+    <li>repo → <span class="kbd">Actions</span> → the resolver workflow →
+    <span class="kbd">Run workflow</span> → <span class="kbd">master</span></li>
+  </ul>
+  <p>Watch for:</p>
+  <table>
+    <tr><th>Signal</th><th>Meaning</th></tr>
+    <tr><td>Run green; <code>data/streams.json</code> committed</td>
+        <td><span class="pill ok">GOOD</span> Open the file — most live streams have a
+        <code>url</code>; seasonal/offline ones are <code>null</code> + <code>error</code> (that's correct)</td></tr>
+    <tr><td><code>status: "stale"</code> in the JSON</td>
+        <td><span class="pill no">JAR DEAD</span> YouTube rejected the cookie jar —
+        run the playwright-gist-updater manually (or re-export cookies), then re-run</td></tr>
+    <tr><td>429s in the logs, partial entries</td>
+        <td>The runner IP got rate-limited mid-run; the run marked the rest
+        <i>stale-but-last-good</i>. Just re-run — the next VM has a different IP</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="num">3</span> The gate: prove playback from your IP</h2>
+<div class="card gate">
+  <span class="tag">Stop here until this passes</span>
+  <p>Everything so far resolved the URLs from a <b>runner</b> IP. Your player runs on
+  your <b>residential</b> IP. The one untested assumption in the whole design is
+  whether YouTube's signature is IP-bound. This test settles it in under a minute —
+  run it on your desktop, <i>after</i> Step 2:</p>
+<pre>URL=$(curl -fsS \
+  https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/data/streams.json \
+  | jq -r '.streams["relax-study"].url')
+
+# 1. shape check — expect an audio stream, NO video stream, ~100–200 kb/s
+ffprobe -hide_banner "$URL"
+
+# 2. listen check — 30 seconds of music
+timeout 30 mpv --no-video "$URL"</pre>
+  <div class="okbox card" style="margin-top:14px">
+    <span class="tag">Pass</span>
+    ffprobe lists an <code>aac</code> stream and no <code>video</code> stream,
+    and mpv plays. <b>Render teardown is authorized</b> (Step 6). No Worker needed.
+  </div>
+  <div class="failbox card" style="margin-top:10px">
+    <span class="tag">Fail (403 / "Request denied")</span>
+    Signatures are IP-bound. Two pre-planned escapes, in order:
+    <ol style="margin:8px 0">
+      <li><b>Enable the Cloudflare Worker hop</b> (Step 5) — Cloudflare's network
+      fetches the segments; your IP never touches YouTube's CDN directly.</li>
+      <li><b>Local-resolve fallback</b> — <code>.lofi</code> (rewritten) already
+      degrades to mpv + local yt-dlp, the <code>ytcava</code> path. Your residential
+      IP is exactly the one YouTube likes. Works today, no infrastructure.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="num">4</span> Swap your <code>.lofi</code></h2>
+<div class="card">
+  <p>The agent commits a rewritten <code>.lofi</code>. On your machine:</p>
+  <ol class="steps">
+    <li>Pull the repo (or copy the file), point your shell config at the new
+        <code>.lofi</code>, then <span class="kbd">source</span> your
+        <span class="kbd">.zshrc</span>.</li>
+    <li>Verify: <code>lofi -h</code> lists the streams (names now canonical,
+        config-derived), <code>lofi -r</code> plays with cava + media widget + artwork.</li>
+    <li>Confirm the pinger is gone: <code>pgrep -f 'sleep 600'</code> returns nothing
+        during playback. Nothing has to stay awake anymore.</li>
+  </ol>
+  <table>
+    <tr><th>Was</th><th>Now</th></tr>
+    <tr><td><code>base</code> → Render relay</td><td>fetch → public JSON → signed m3u8 (or Worker URL, Step 5)</td></tr>
+    <tr><td><code>X-API-Key</code> on every request</td><td>none on the direct path (Worker hop keeps it)</td></tr>
+    <tr><td>10-minute keep-alive pinger + trap machinery</td><td>deleted</td></tr>
+    <tr><td>cover art via relay <code>/thumbnail</code></td><td>straight from <code>i.ytimg.com</code> by <code>video_id</code> (in the JSON)</td></tr>
+    <tr><td>restart loop against the relay</td><td>re-fetches the JSON — next 30-min cron heals stale/expired URLs</td></tr>
+    <tr><td><code>lofi -health</code> → Render <code>/health</code></td><td>fetch JSON + ffprobe first entry</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="num">5</span> Optional: the Cloudflare Worker hop</h2>
+<div class="card">
+  <p>Only if Step 3 failed <i>and</i> you want the proxy route (or you simply like
+  the ~900&nbsp;KB DVR playlist trimmed to a live-edge window). All of it card-free:</p>
+  <ol class="steps">
+    <li><b>Account:</b> sign up at <code>dash.cloudflare.com</code> — email only,
+        no card. Create a free Workers zone subdomain (<code>lofi-relay.&lt;you&gt;.workers.dev</code>).</li>
+    <li><b>CLI:</b> <code>npm i -g wrangler</code> then <code>wrangler login</code>
+        (browser OAuth — no API token needed).</li>
+    <li><b>Deploy:</b> the agent commits the Worker. Run
+        <code>wrangler deploy</code> in the worker's directory.</li>
+    <li><b>Key:</b> bind the <i>existing</i> API key so the worker keeps its quota
+        shield: <code>wrangler secret put LOFI_API_KEY</code> (paste the key your
+        Render service uses).</li>
+    <li><b>Verify:</b>
+<pre>curl -fsS -H "X-API-Key: $LOFI_API_KEY" \
+  "https://lofi-relay.&lt;you&gt;.workers.dev/health"
+# then ffprobe a /lofi/relax-study URL through the worker</pre></li>
+  </ol>
+  <p class="note" style="margin-top:10px"><b>Quota reality:</b> one 24/7 listener ≈
+  22&nbsp;k requests/day (segments ≈5&nbsp;s) vs the free 100&nbsp;k/day cap.
+  You use a quarter of it with one stream; concurrent listeners scale linearly.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="num">6</span> Cutover &amp; Render teardown <span style="color:var(--dim);font-weight:400">(gated follow-up)</span></h2>
+<div class="card">
+  <p>The spec gates this on <b>7 days of clean runs</b> on the new path:
+  no <code>stale</code> status for more than one cron cycle, no gate failures,
+  no local-resolve fallbacks needed.</p>
+  <ol>
+    <li>Delete the Render service (keep the image/repo <code>app/</code> as fallback source).</li>
+    <li>Strip <code>LOFI_API_KEY</code> from <code>.lofi</code> and any client config
+        (the direct path has no auth; Worker path reuses the key if you kept it).</li>
+    <li>README gets the new architecture section (agent task in the issue).</li>
+    <li>History cleanup of the long-hardcoded key (BFG / filter-repo) is a
+        <b>separate task</b> — the key stops being live at step 2, but it remains
+        readable in old commits until a rewrite.</li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="num">7</span> Troubleshooting</h2>
+<div class="card">
+  <table>
+    <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    <tr><td>JSON <code>status: "stale"</code></td>
+        <td>YouTube rejected the cookie jar (login markers)</td>
+        <td>Trigger the playwright-gist-updater manually or re-export cookies; re-run the workflow</td></tr>
+    <tr><td>One entry <code>null</code> + <code>error</code></td>
+        <td>That channel is offline — normal for seasonal streams (halloween/christmas off-season)</td>
+        <td>Nothing. Client falls back to local resolve; entry self-heals when the channel goes live</td></tr>
+    <tr><td><code>ffprobe</code> → 403 / "Request denied"</td>
+        <td>IP-bound signature from the runner</td>
+        <td>Step 5 (Worker hop) or Step 3's local-resolve fallback; also just re-dispatch (new runner IP)</td></tr>
+    <tr><td>Raw JSON URL 404</td>
+        <td>Wrong branch</td>
+        <td>Repo default branch is <b><code>master</code></b>, not <code>main</code></td></tr>
+    <tr><td>mpv stalls mid-session</td>
+        <td>YouTube rotated the signed URL faster than the cron</td>
+        <td>Wait one cron cycle (≤30 min) — the restart loop re-fetches; or shorten the cron in the workflow</td></tr>
+    <tr><td>Workflow red at "install" steps</td>
+        <td>yt-dlp/deno version drift on the runner</td>
+        <td>Check the run log; the pins live in the workflow + requirements — re-pin and re-dispatch</td></tr>
+    <tr><td>Media widget shows no artwork</td>
+        <td><code>maxresdefault.jpg</code> missing on that video</td>
+        <td>Client already falls back to <code>hqdefault.jpg</code>; if still blank, check the JSON's <code>video_id</code></td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<div class="card okbox">
+  <span class="tag">The data bill, for the record</span>
+  <table>
+    <tr><th>Party</th><th>What crosses their wire</th><th>Cost to you</th></tr>
+    <tr><td>GitHub Actions runner</td><td>Zero media — URL-only extraction</td><td>$0 (public repo, no card)</td></tr>
+    <tr><td>Cloudflare (if used)</td><td>~16 KB/s audio proxy, egress-free model</td><td>$0 within free tier, no card</td></tr>
+    <tr><td><b>Your line</b></td><td><b>Audio only</b> ≈ 16 KB/s + occasional playlist text</td><td>~1 MB/hour of listening — no video, ever</td></tr>
+    <tr><td>Render (until teardown)</td><td>Fallback path only</td><td>$0, idle most of the time</td></tr>
+  </table>
+</div>
+
+<footer>
+  <p>Companion to <a href="https://github.com/Wealth1000/lofi-relay/issues/3">issue #3 —
+  “Replace Render relay with a card-free, video-free resolver architecture”</a>.
+  This document contains no secrets; every value above is something you paste from
+  your existing material. Steps 1–6 in order; Step 5 only if Step 3 fails.</p>
+</footer>
+
+</div>
+</body>
+</html>

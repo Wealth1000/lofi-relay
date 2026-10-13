@@ -5,14 +5,20 @@ audio-only streams. Single end user (the owner). Deployed on Render's free tier.
 
 ## What it does
 
-- `GET /lofi/{stream}` → raw AAC (ADTS) audio, chunked over HTTP, served by
-  yt-dlp + FFmpeg. Requires `X-API-Key` header.
-- `GET /lofi/{stream}/thumbnail` → JPEG cover art derived from the video ID
-  (no yt-dlp extraction involved).
-- `GET /streams` → list of configured streams + sources.
-- `GET /health` → unauthenticated liveness probe.
+Two paths, one client command (`.lofi`):
 
-## Architecture (one request path)
+- **Resolver (default, `LOFI_BACKEND=json`):** a GitHub Actions cron (every
+  30 min, free, rotating runner IPs, no card) resolves every source to a
+  signed **audio-only** m3u8 and commits `data/streams.json`. The client
+  fetches the document and plays the URL straight from YouTube's CDN.
+  No host, no video bytes (~16 KB/s client line), no pinger.
+- **Relay (fallback, `LOFI_BACKEND=relay`):** the FastAPI service on Render.
+  - `GET /lofi/{stream}` → raw AAC, chunked over HTTP. Requires `X-API-Key`.
+  - `GET /lofi/{stream}/thumbnail` → JPEG cover art (video-ID derived).
+  - `GET /streams` → list of configured streams + sources.
+  - `GET /health` → unauthenticated liveness probe.
+
+## Architecture (one request path, relay backend)
 
 ```
 Client (X-API-Key)
@@ -22,34 +28,44 @@ Client (X-API-Key)
         → client
 ```
 
+```
+Resolver (json backend, primary)
+GitHub Actions cron (30 min, fresh runner each run)
+  → yt-dlp (audio-only format 234/233/bestaudio, Chrome impersonation,
+     cookie jar pulled fresh from the Gist)
+    → data/streams.json (committed; merge-preserved — a bad run never
+      blanks a last-good URL; signed URLs live ~24h)
+      → .lofi json backend → mpv → YouTube CDN
+```
+
 ## Key files
 
 | File | Role |
 | --- | --- |
-| `app/main.py` | FastAPI app, routes, up-front resolve before streaming |
-| `app/config.py` | All env config + the 7 hardcoded `STREAMS` map |
+| `app/main.py` | FastAPI app, routes, up-front resolve before streaming (relay only) |
+| `app/config.py` | Env config + canonical `STREAMS` map (22 keys) + `STREAM_LABELS` |
 | `app/auth.py` | `X-API-Key` header check, `secrets.compare_digest` |
 | `app/services/youtube.py` | yt-dlp extraction, cookie jar seeding/sync, manifest URL cache, global `_extract_lock` |
 | `app/services/stream.py` | FFmpeg supervision: spawn, relay chunks, respawn on exit with backoff |
 | `app/services/thumbnail.py` | i.ytimg.com thumbnail fetch + cache |
 | `app/services/jar_store.py` | GitHub Gist as persistent cookie-jar store (pull/push) |
-| `app/.lofi` | zsh client script: mpv + cava, cover-art fetch, keepalive pinger, restart loop |
+| `tools/resolve_streams.py` | Standalone resolver: pulls Gist jar, runs yt-dlp per stream, emits `data/streams.json` |
+| `.github/workflows/resolve-streams.yml` | 30-min cron + manual dispatch; installs Deno + yt-dlp + curl_cffi, commits document |
+| `data/streams.json` | Published audio-only URLs; public, committed by the cron |
+| `tests/test_resolver.py` | Seam 1: stubbed yt-dlp, asserts on emitted document shape/status/exit-code |
+| `.lofi` | zsh client: json backend (default) + relay fallback, cover art, cava, restart loop |
+| `docs/migration-setup.html` | Owner setup guide (steps 1–6) for this migration |
 
 ## Operational facts
 
-- Live at `https://lofi-relay.onrender.com` (Render free tier).
-- Render spins down after 15 min of no *inbound* traffic; outbound audio does
-  not keep it awake. Client runs a `/health` keepalive pinger (10 min) tied to
-  playback, plus a restart loop (`.lofi`) that retries on disconnect.
-- Cookies are the recurring failure point. They live in a private GitHub Gist
-  (single source of truth), seeded into a runtime copy at
-  `/tmp/youtube-cookies.txt` on cold boot, and kept fresh by a scheduled
-  headless-Chromium job (`playwright-gist-updater`, runs on GitHub Actions —
-  free, no card, always-on). The relay is read-only on the Gist. YouTube
-  session rejection → 503 "re-export cookies required".
-- yt-dlp extraction is slow and globally serialized (`_extract_lock`); the
-  resolved manifest URL is cached `STREAM_URL_TTL` (3600s) and reused by
-  respawns and second listeners.
+- **Primary path:** `data/streams.json` is a public file committed by the resolver cron every 30 minutes. `.lofi`'s json backend fetches it and plays the signed m3u8 directly from YouTube's CDN — no host, no video bytes.
+- **Fallback path:** Render relay (`LOFI_BACKEND=relay`). Same behavior as before; Render spins down after 15 min of no inbound traffic; the relay's `/health` pinger is only needed here.
+- **Cookie jar:** single source of truth is the private Gist. The relay reads it at cold boot; the resolver pulls a fresh copy each run. Both need `JAR_GIST_ID` / `JAR_GITHUB_TOKEN`.
+- **YouTube format:** relay hardcodes `format_id="91"` (muxed HLS); resolver prefers `234/233/bestaudio/best` (audio-only rungs verified 2026-10-13).
+- **Live stream validity:** observed ~24 h for signed URLs. Cron cadence (30 min) gives ample headroom.
+- **Rate-limit posture:** the resolver treats a 429 as "defer the rest of the batch" (one 120 s cooldown sleep, then stops probing). A session rejection ("sign in"/"not a bot") publishes `status: stale` over the last good data and exits non-zero (red run).
+- **Cross-IP caveat (open):** signed URLs embed the resolver IP in their signature. If YouTube starts refusing playback from different IPs, the second-IP proof test (Step 3 of `docs/migration-setup.html`) is the gate. Pre-planned escapes: Cloudflare Worker hop (if gate fails), mpv local-resolve fallback, or `LOFI_BACKEND=relay`.
+- **Open issue:** the `halloween-lofi` channel is currently offline (seasonal); the resolver correctly records `url: null` + error. Same for `christmas-lofi` off-season.
 
 ## Open issues / improvement ideas (from last review)
 
@@ -62,13 +78,21 @@ Client (X-API-Key)
    after 200 headers are sent → client gets a truncated empty AAC body.
 6. Manifest `expire` from YouTube is ignored; fixed `STREAM_URL_TTL` used.
 7. No tests at all.
-8. `format_id="91"` hardcoded with no fallback list.
+8. `format_id="91"` hardcoded with no fallback list (relay-specific; frozen
+   until teardown).
+
+**Resolved by this migration (issue #3):**
+- #5 / #6: the resolver's merge-preserved document removes the single-source-of-trust cache on Render; stale entries fall back to last-good URLs without corrupting.
+- #7: test seam 1 is landed (`tests/test_resolver.py`).
+- Cross-IP YouTube signature gate: documented in `docs/migration-setup.html` Step 3. Not yet verified from a residential IP — Render stays until that passes.
 
 ## Stale leftovers (still on Render, not Fly)
 
 - `fly.toml` is untracked; references a deployment that is not live.
-- `.lofi` and `README.md` reference `https://lofi-relay.fly.dev` — should be
-  the Render URL.
+- `.lofi` and `README.md` previously referenced `https://lofi-relay.fly.dev`
+  — now point at `https://lofi-relay.onrender.com`.
+- `app/config.py` still hardcodes `UPSTREAM_FORMAT="91"` — relay is frozen
+  until teardown (see Step 6 of `docs/migration-setup.html`).
 
 ## Session restart instructions
 

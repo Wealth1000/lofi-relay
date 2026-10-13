@@ -1,0 +1,2 @@
+# Dev-only deps (never installed into the relay image or the Actions runner).
+pytest

@@ -1,0 +1,250 @@
+{
+  "last_error": null,
+  "status": "ok",
+  "streams": {
+    "asian-relax-study": {
+      "error": null,
+      "format_id": "234",
+      "label": "Asian Relax / Study",
+      "resolved_at": "2026-10-13T20:55:14.353735+00:00",
+      "source": "https://www.youtube.com/watch?v=1Tl2FtV06qo",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946510/ei/rprOaumDB4uy8uMPxZ67iQU/ip/154.162.35.230/id/1Tl2FtV06qo.2/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr3---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwqNVS6E6c44S4RSXPDs45t4nrtxpH5D0i2uGatu2-_Itfm8OhXK4OV7-UCulc6VC8klShEVKzGQ/spc/mpRQ_7FeSgd8wBnErJhO0fcK0jQ2Ul6ZAtRqstWUj47GVt09ith9lNBrdLco/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924914,/mh/kP/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/3/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRAIgEhB7gHbVPkXye6vPEjANEl_sWmfHX9QdRbmsQXe64UUCIGCvuYOvvFOcW5f33XCWCBSLiuTO6N5RVS_qSCzi1UNw/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhALfrv0dtmUFLJ93uUalFGywNNqx1f5sCG0aN2L9PvSxQAiEAi9Uwi428u-mAczPwP8k1ZyOxxQ0iL8q7RqrwaNUKiIA%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "1Tl2FtV06qo"
+    },
+    "chill-guitar": {
+      "error": null,
+      "format_id": "234",
+      "label": "Chill Guitar",
+      "resolved_at": "2026-10-13T20:57:12.431266+00:00",
+      "source": "https://www.youtube.com/watch?v=E_XmwjgRLz8",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946631/ei/J5vOaqDHBNrvhcIP1PDOyQ4/ip/154.162.35.230/id/E_XmwjgRLz8.3/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jjs.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwr7j8WhEqfaJ1vlNmfUphpeUbRbWsz7v9RpJeQcesoeCYjx3pf3F_aqBe7NfGtlYUm0VOLsZbZK/spc/mpRQ_wQBRMNb5JFoQ3lz6YBrty7dEwG444Dwz77KBsxqZxLgay2mdxKkdaJN/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791925032,/mh/zz/mm/44/mn/sn-huobi-5jjs/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRgIhAL6W_601_zyplsa3LRI1uzSPMqb0Qww9CcFkFlkDRDrWAiEA8K3a_VsKM4qnpL24Q_YT6ggSyWIj14kyErw0fxqYcHM%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgIuwYBVsjMiF-bWYLXj1UXlxP7gVrs13I5ygZ3xnPsYYCIQCz-v-6w9RhJbLLxdl78vLwmEddBUF_o1-HzqCEzPTwwA%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "E_XmwjgRLz8"
+    },
+    "christmas-lofi": {
+      "error": null,
+      "format_id": "234",
+      "label": "Christmas Lofi",
+      "resolved_at": "2026-10-13T20:55:52.468080+00:00",
+      "source": "https://www.youtube.com/watch?v=XSXEaikz0Bc",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946550/ei/1prOapTWN8mP8uMPitmk0QI/ip/154.162.35.230/id/XSXEaikz0Bc.5/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwqnB12JVG8BMgZEjoapVTR-vk_0Mv1iOQK9G9kqKVHtyCkOxryQhV8fsvixDzy9kGuoqGbWgkvy/spc/mpRQ_xKhmb9QcMyt_fJNWCm4L_Wo9djEaVorWaLtrO72VNbkozDWY64sy-F2/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924952,/mh/MB/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184231/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIhAJcrfkZIteVb7IRFvSOEJgzel7P6hHeo7GKEW0Ymu2bBAiBODiyx2n8JNLfnEOEGsVSNBMZtR4tWb5J2dV5qR9MmRA%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhAI0pCNpcoxJ15iw4ezQgJqQ2o1UlVn9CHwnpTFeFPhkgAiEA-9UbpZEvPYvTfyq9YO8UpRiZXE7nHHszLqC3uccvu78%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "XSXEaikz0Bc"
+    },
+    "classical-study": {
+      "error": null,
+      "format_id": "234",
+      "label": "Classical Study",
+      "resolved_at": "2026-10-13T20:56:01.811510+00:00",
+      "source": "https://www.youtube.com/watch?v=jXAEIWcGXwE",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946560/ei/4JrOar_hEPen8uMPi7noiQU/ip/154.162.35.230/id/jXAEIWcGXwE.4/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwpfXfXSUr_5bA9IcVv3PpwvYlVxmAQ59QUcdYC5t2u092jQJFsseJlrK8XqCZ5hwTKvbfoUvGza/spc/mpRQ_1CVxDXlOJhaV4XkcIohPoKj4zRFkLA6IupXvTpISHUjN5K9LDgXao44/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924961,/mh/eD/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIgGxYsdzt7mmtveXgeTYb84f-GUZwPMLh9pUDDAyBeYsACIQCnb3_802vu0klAtJ81WZAt3W8T0Q17l1TJoUs5Pe4qPw%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhAKsstfDo0LxxewnlazNBDWyYwKD6_oAExbuH1Z6q0Q6RAiEA-1VsQwdilKcROT9d6uNpEAdc8n_a5qWC4PvDbQ_794k%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "jXAEIWcGXwE"
+    },
+    "dark-ambient": {
+      "error": null,
+      "format_id": "234",
+      "label": "Dark Ambient",
+      "resolved_at": "2026-10-13T20:57:51.619290+00:00",
+      "source": "https://www.youtube.com/watch?v=S_MOd40zlYU",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946670/ei/TpvOas2EJ7LnxN8PjtzagQ8/ip/154.162.35.230/id/S_MOd40zlYU.4/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwope4vCpcCfQ83LHM9NtUuenAEryi6EhQJBMcVxEmnNZQ0SrLLfkw3lCj5w6jiim_mLpiZZWN0-/spc/mpRQ_8po6cg8pfGEbpIqJ2-CLi7cCvcSruclP6ZB5jlKd_NIgFUgJSVTvqso/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791925071,/mh/Sh/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184231/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIgNpKzKmIvejQaDz_7zCYO8iv4O-6ny2dqrlZ-fa4ZJNwCIQCFl4jiD5B4q-xcjB215BWG60HuTuK_6TqYH_McYMnGFw%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgb8jmtkvMz_Hd37n6m1gcUUPcNJSKmTEUWrhoVnoZkkQCIQCbuwhMrv3kcd7gH5tGGsKBbrlQp3RTKHxkweRzU1Jqbw%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "S_MOd40zlYU"
+    },
+    "fireplace-ambience": {
+      "error": null,
+      "format_id": "234",
+      "label": "Fireplace Ambience",
+      "resolved_at": "2026-10-13T20:57:04.526780+00:00",
+      "source": "https://www.youtube.com/watch?v=q_4KI-ChIIs",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946623/ei/H5vOatabDtL2xN8Pyq-cYA/ip/154.162.35.230/id/q_4KI-ChIIs.4/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jjs.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwqrOsAeKr_I7W_rDhySy1LTkqkEUMgHFgbK9iOzELzO0oYdK-IdkZqZ5NUzECXpvEVIB2KaNQ_7/spc/mpRQ_4Fb6bzMlxN-Es44XGgmKXZ6qmpPrDtiyrSNVIBGgB5i5fos12N_1yic/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791925024,/mh/A4/mm/44/mn/sn-huobi-5jjs/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184231/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIhAMuLuv1otbyASP91jvp21IhpGwHO6gbE82AEZiBj4KdIAiB0JsWLpZBzIVRu1yut8yNep_UErxcx8PAEw1mN0sG-Kg%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhAL-WbSjf2kzrsY4i1zbHIGKheQtUQZxl1T88ulz8QbH8AiEA97Rrm_lM8NDE4R0z4bzflA-SoWA-I24Rvn88Us9_MqM%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "q_4KI-ChIIs"
+    },
+    "gentle-rain": {
+      "error": null,
+      "format_id": "234",
+      "label": "Gentle Rain",
+      "resolved_at": "2026-10-13T20:57:43.777867+00:00",
+      "source": "https://www.youtube.com/watch?v=-OekvEFm1lo",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946661/ei/RZvOarqrKuGEp-oP78eisAI/ip/154.162.35.230/id/-OekvEFm1lo.5/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr4---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwqjKzL_4tHiYce2kQgfH3j1ASNn59cyMDlHh-rNe2-1BhjlT-3Tfoq0HSoxkHt1v8WaQiLyODWG/spc/I-rgIVr8QS2LfcxU5b3rP0f3wVNqMammXjJvqkjB0Xdc4Bv_cL2OzR0eAkUL/vprv/1/reg/0/playlist_type/DVR/initcwndbps/266625/met/1791925063,/mh/4d/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/4/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184232/mt/1791924780/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIhAPMhIvP47ADeALZOKVSTH1R4K_fBy790nlOZC4NycN0zAiBsZV4TGwKWoaHns_wNbRDBJ-fGxuWDiLaoSEpUmhh77g%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIhAPwR2FC9Qdu4Cbx4nfcJtaVoRJIWIK3CXqpMKQe3iW6dAiAaYlkQ5P2p3FVRlSHBrWeDOSHcGCBxbx2m_OIBquOv8g%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "-OekvEFm1lo"
+    },
+    "halloween-lofi": {
+      "error": "ERROR: [youtube] 3GQY80jyysQ: This live stream recording is not available.",
+      "format_id": null,
+      "label": "Halloween Lofi",
+      "resolved_at": null,
+      "source": "https://www.youtube.com/watch?v=3GQY80jyysQ",
+      "stale": true,
+      "url": null,
+      "variant": null,
+      "video_id": "3GQY80jyysQ"
+    },
+    "jazz-chill-study": {
+      "error": null,
+      "format_id": "234",
+      "label": "Jazz / Chill Study",
+      "resolved_at": "2026-10-13T20:55:23.474650+00:00",
+      "source": "https://www.youtube.com/watch?v=E2vONfzoyRI",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946521/ei/uJrOarrdOq7JmLAP7I-usA8/ip/154.162.35.230/id/E2vONfzoyRI.2/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwoIDKOLR6QHBVGZ-9NmF6dN7xmL7anskwrx4C4Sv0gXZvk8B_PR4rX0YhkJnUtuL3kf3507DxLA/spc/mpRQ_8kgMm8nW2FbM8egCYAQm7XciDCzadup3CEQvkwZXZlX0H0bTHlfD0Jz/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924922,/mh/ou/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184231/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRgIhALTel_lc1neMW94UGyFG4KgOR1myzp20-Qb9B6TwzVQRAiEAjii0l3ssnf-BS9S0KYI_fZhUjp-4E0TmQYHws4Sy9B4%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgaCvWASakCGtgHBHZYrDGoh5u0XckKUqt8HCRgosvNiwCIQCeqLeSyJz8GbLn26KVjEiAnrJSx7E-bd1BZ-bX6SXucA%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "E2vONfzoyRI"
+    },
+    "lofi-house": {
+      "error": null,
+      "format_id": "234",
+      "label": "Lofi House",
+      "resolved_at": "2026-10-13T20:53:51.637953+00:00",
+      "source": "https://www.youtube.com/watch?v=3PFJ9SETS4M",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946429/ei/XZrOarCWKq31xN8PoMbFuA4/ip/154.162.35.230/id/3PFJ9SETS4M.2/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwpMlvkiEFESwKCsGWZNr5g-PAHxEeOzP0bN3wWxd3WAOShftwhFhHe4ALRxIdKDNNWxvrNoCNsZ/spc/mpRQ_3ymMDtLYr-EkE-zdFDWBoLtfbCQd0Ovc7uCl4y5UWPUlc5TCwgq_QaE/vprv/1/reg/0/playlist_type/DVR/initcwndbps/267750/met/1791924831,/mh/RI/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184232/mt/1791924273/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRgIhALMn6Nm6yAXYZ6M6uY4k07iTos8NQkGiue4HuvMJd-FIAiEA8B37FwcS-l5oFHNOsikL8Qr58aKulcPhQNCSEEtFAc0%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhAJl_4AhwcNO2dj34Maipoq9T0PtOzHrQLxyPzLOfJzseAiEAyxYr9F9DXW5hiRYyL2nNVlNSDsXFz6Ndq9gFcLTCXRU%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "3PFJ9SETS4M"
+    },
+    "medieval-lofi": {
+      "error": null,
+      "format_id": "234",
+      "label": "Medieval Lofi",
+      "resolved_at": "2026-10-13T20:57:33.587775+00:00",
+      "source": "https://www.youtube.com/watch?v=IxPANmjPaek",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946652/ei/PJvOaq_NGL2DvdIP2-HP-Qo/ip/154.162.35.230/id/IxPANmjPaek.35/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwq1cqdWTZ9UYJmlqamOedQY25EViYd_7M0Z1xzXQkc_Wp6Ieaexw3ymTqPWL79DJoyNImfyC3s-/spc/mpRQ_2LIZ8pzIIBUNjGpSJeBOTyVwY-yoguN0k56Yg0QRKEdih8ca_jrt17T/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791925053,/mh/4i/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184231/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIgDjjSHoIo8QytbMFl0OULqPwmnjLiUk0u614IIifXC9YCIQDLocNlAhVUe4eqC15h8NRNfkxywaML677Njgo0XGYHPg%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIhAKyoum69chny4qT8WVBujGHlu1a_YcLCX6IgC_viOES_AiAw_VmRSGKxm0Fct2jqh56DtxqQCMOHutYIvBEAxx5C2g%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "IxPANmjPaek"
+    },
+    "piano-focus": {
+      "error": null,
+      "format_id": "234",
+      "label": "Piano / Focus",
+      "resolved_at": "2026-10-13T20:55:44.675735+00:00",
+      "source": "https://www.youtube.com/watch?v=N0snMcR6aaA",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946543/ei/z5rOaqTtHcbImLAPxLOP4A4/ip/154.162.35.230/id/N0snMcR6aaA.61/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwrKOx4Ydr6NmF-2AzJcUHC8c_2ZLhTnbae-RLMsghlShh9uzAp_FNInDyNWzqovmqa7r41q4lIo/spc/mpRQ_z3CGzJLvfvHqt3ND9fC2ICuEmQu2uqXDdGtMuYgE6tzj5laUJ839tTHtL6MXw/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924944,/mh/h8/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184232,52227522/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRAIgelamVQHgak0aOi9To08LNzDCW6XmsUOgXQZG6BUBGtcCIBZbMqOLcAmUdrXJXWpiI7-UqDjFBo-88Lx7iz5Mzcxj/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRAIgfLSgMIdu1u9GL_vKMH68de9ice6P-0icGAPDGK6c968CIBp4ui6WmT6jEZUL3N3Cz41iaMqYI1kpwgqchPzVwPwJ/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "N0snMcR6aaA"
+    },
+    "relax-study": {
+      "error": null,
+      "format_id": "234",
+      "label": "Relax / Study",
+      "resolved_at": "2026-10-13T20:54:02.711526+00:00",
+      "source": "https://www.youtube.com/watch?v=rFZHOHl-L8A",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946441/ei/aZrOaoDIH7bM8uMP2Nq9gA8/ip/154.162.35.230/id/rFZHOHl-L8A.1/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwp9j1fJvqBeMpoT2mGAd0kGofrzujhDRZGp22XGq-xOYLeHGZ2AVYIAElhHBAeZ7RQw-vibhWDS/spc/mpRQ_wvJKHJzlR3kNlG1STfN9prwLpadu-l7iwJZJrlP6UVp1fpOQ3CWS7Cx/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924842,/mh/I2/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184231/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIhALxU6X9HO23dTqh_yUqLoPR6YxzSPe0cBHWC5olmVoCUAiAdfzASMyZh5p8VPpc2KEl-yTvx0fH3nGxltDIWJKxYng%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRAIgF1Qz5x284QYWIJeQ93PB-WTx6jO3tZXWcaJRQaz_sswCIHn2GmazFX7xldqYT8p8MBhlaxD-5Lf0bwU8CW9oMZYa/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "rFZHOHl-L8A"
+    },
+    "relaxing-jazz": {
+      "error": null,
+      "format_id": "234",
+      "label": "Relaxing Jazz",
+      "resolved_at": "2026-10-13T20:56:11.608268+00:00",
+      "source": "https://www.youtube.com/watch?v=A8jDx9TLMQc",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946570/ei/6prOaoy_Govap-oP0vPKwAE/ip/154.162.35.230/id/A8jDx9TLMQc.3/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwpsfG_Na_wQvwk5eqU9XAinGVInXMWc-PG7hDV_rJUBKdtXLnugbpnbQezcXpzvhSNiAHYUEzip/spc/I-rgIWj-JG7Cd4OauN-stZH7z2PmI_3Gbq48w0H_MbSmPxluj3jOpnTyggO2/vprv/1/reg/0/playlist_type/DVR/initcwndbps/266625/met/1791924971,/mh/WR/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184232/mt/1791924780/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRAIgJW_XSwESAguDRGj58Xcm5CgNk-4gnnlmWKHgIbP_w1kCICH9S4ws_Mqg6DlGdQLZmQi9w1L6WlhGUFvQqW2XUDJq/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhAIUp-Kl1lhX2fTXw5-zq81Ncp7bvq_fGTYv-5D4mHLlYAiEA6d4rnG2w95JarMSaJOp1RIXziiHyaPaBuMtSCR1CHPU%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "A8jDx9TLMQc"
+    },
+    "sad-rainy": {
+      "error": null,
+      "format_id": "234",
+      "label": "Rain / Sad",
+      "resolved_at": "2026-10-13T20:54:44.142911+00:00",
+      "source": "https://www.youtube.com/watch?v=CwPCy1GLS38",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946483/ei/k5rOarUSj4Gn6g_N6snYCw/ip/154.162.35.230/id/CwPCy1GLS38.2/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwrTPvd75IddKZK_dTPW7nXQAeGDT9XKISNbzg4B8hZm_aBRKM3wzWGsvIngCYEyf-L_G6G7MyPh/spc/I-rgIX6rS6vkdAQnkt4uHWytu2OWbBPtb4t5TjPmQW3Fdr7Kw-oJZdtc5T5_/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924883,/mh/kC/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIgLzp6lGmEQ5ImYo2gFVMItc3idR-UThfIhdhgumofD-8CIQCi-zWgx1mojAmYeJlX-qACJ0Q44YRVWHraxpF5G6XhVg%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhANSKKegNe4Zzu_gMNCKR0m6WyQvzcvL_YnaHkk6Ptw_TAiEA-kDR7BlClx1EvAdc8GxvlvER8iMYjMtom14h2IER__c%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "CwPCy1GLS38"
+    },
+    "sleep-ambient": {
+      "error": null,
+      "format_id": "234",
+      "label": "Sleep Ambient",
+      "resolved_at": "2026-10-13T20:57:23.729006+00:00",
+      "source": "https://www.youtube.com/watch?v=xORCbIptqcc",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946642/ei/MpvOaofmEaKqhcIP4pmDUA/ip/154.162.35.230/id/xORCbIptqcc.2/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwrDlBhh1i2Gyrig_bWi4R2P_LQTrmuyEVdLURp5hdPmfpksBOLyzVzjzqGQFddN27Um6_XtBIsu/spc/mpRQ_5vaxtfJ0RtZy8fGyhkJek2r5yTbT9Qhj2DHCUg2TlM7DxVNAarUoFyA/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791925043,/mh/N2/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIgBcRyJTqhHNfkadFj2xW3_gKl5aMmSk_3iLc4nVSdYvcCIQCLDoZ_pFOn9aHwTkKMlIuuFdjXNJRSLxoQBdljbctvHQ%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIhAKOAsOpb-TYZSgNp956p9k4h9X7QSFfnnx3XWjAqqxlwAiBjISZVLdla3gvIOHLp1x5Jjqbv6JWz4ltG5cbXVX5zOg%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "xORCbIptqcc"
+    },
+    "sleep-chill": {
+      "error": null,
+      "format_id": "234",
+      "label": "Sleep Chill",
+      "resolved_at": "2026-10-13T20:55:36.662073+00:00",
+      "source": "https://www.youtube.com/watch?v=JD-kMIpDfnY",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946535/ei/x5rOatzAJYfPmLAP9_mh6Ao/ip/154.162.35.230/id/JD-kMIpDfnY.2/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwrjMgBZOXSrPAtaA4AhKjcHWYUXEQzwZuCHnTXhU_qNDACP2n51lT8FMjeNVglfy3oFUPO9dVKW/spc/mpRQ_5SSPR3rmyHG-cxShoblJ11GvfAu65AZzWzpsEBclDuLI7NlP6oyE0yKqbRIVA/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924936,/mh/iU/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184232,52227522/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIhAKd6Yno7JK4-69DjWtEB1-NWzptIs0YvwY0OSIdTR64vAiB8R9u4xfLE2MEGnJ9hTrZkF66ujXBaFClAc9k8Lxunsw%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgR8GFi4bLDszweUYwMuYLtG3KMumBtheMCXIoXyMbZrsCIQDv8fowc4SL052BxWbbNMI5guvz044BpK1mANwMTEsUvg%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "JD-kMIpDfnY"
+    },
+    "sleep-dream": {
+      "error": null,
+      "format_id": "234",
+      "label": "Sleep / Dream",
+      "resolved_at": "2026-10-13T20:54:19.914226+00:00",
+      "source": "https://www.youtube.com/watch?v=VAlMDl00mYY",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946458/ei/eprOap2QNpfkxN8P66eRiAk/ip/154.162.35.230/id/VAlMDl00mYY.1/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwpa-u5VMbP4Qz_ljfwtdjDs8X13cd_xDaMiahqaYvaS6Fte8OKhuKRGKZJqjGEqift2Ufq0fEHH/spc/mpRQ_3BU-G67TYmiclr6IdoA8dNnsBrLw4r6BdUwaFwyYHf-veBC4jC38q9G/vprv/1/reg/0/playlist_type/DVR/initcwndbps/267750/met/1791924859,/mh/Ov/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184231/mt/1791924273/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIhAKMv0hUdKq9J39IYrSZF8L_9I85nntleNSJuvBb5nGgkAiBXtM-U7coIER6t8KdwHZ20bCcwKMAZY7wuUaKUge0Fbw%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIhAKPRlMyHfcXc7E_U1OQI8I0XQ0c3iC05fUgr8rIpfLfwAiAJKhELff99u1d3gjTzFbkr23FFhAuvByV9u0LPXG27TQ%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "VAlMDl00mYY"
+    },
+    "study-with-me": {
+      "error": null,
+      "format_id": "234",
+      "label": "Study With Me",
+      "resolved_at": "2026-10-13T20:54:36.024912+00:00",
+      "source": "https://www.youtube.com/watch?v=qGohtGC5Rtk",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946474/ei/iprOapbuMsCKoccPqejE-Ak/ip/154.162.35.230/id/qGohtGC5Rtk.2/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr2---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwo92OIzA_W0dqoNB0i-WXKhhG0v89tvcF0dJFp7OvJqPpFEGceoVKH89i3gnEM46wTffVQ38Vn2/spc/I-rgIfJ5lk_IkKJ_Ojxm4-QVa4A4dFk75iAm35lZ-vGqqcWSTE77fmZQBCXu/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924875,/mh/eP/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/2/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRgIhAJbxM6QqAHl3YnWNHKyulun7uQfTlWKgfNvpnO20QUM-AiEAwsIV-dXxqEci9PcFPFyumKSG0K-YMllU_S24ZT1_nyo%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgPKeRT2Hzyys4uFeCqJwZXjTfrNAR78jpSyQFUt6ncSQCIQCpcVPtX34FtzFVb9pu-a1156QZUnHOX9Yd_7vt5MF4BA%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "qGohtGC5Rtk"
+    },
+    "summer-lofi": {
+      "error": null,
+      "format_id": "234",
+      "label": "Summer Lofi",
+      "resolved_at": "2026-10-13T20:54:12.455406+00:00",
+      "source": "https://www.youtube.com/watch?v=0muHFBSiybw",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946449/ei/cJrOao7QOrKCp-oP043kuQ8/ip/154.162.35.230/id/0muHFBSiybw.1/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr4---sn-huobi-5jj6.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwq-HUKRCvV1ylg-epzDmWQU6EL0EkBj3hU4JLbtiID5DpR2ktmq82H9dmIOalOMBSGSh9zH_mwl/spc/mpRQ_xYTDftY1I-9tU9OIvfZmq-9VH_6XAMUccQY8tEqD3Tjyilx2AmChjs9/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924852,/mh/K-/mm/44/mn/sn-huobi-5jj6/ms/lva/mv/m/mvi/4/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIgaOqnaL4Y_6480wpQhbZdoVSiWq1RPb1E2eb6NwbXEZsCIQDYYUVINUkO-ksVPwKkicSjB_PyYcHtpznu_RMci5jfoQ%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhAMXnMBDeRlY68dHRSKt7zlqSMYK2VE8d21rQdCRWZ5eJAiEAp9tMbsY8F3X3aI7GL_MuniXph-muPIlx-a_UM7QL6Dg%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "0muHFBSiybw"
+    },
+    "synth-ambient": {
+      "error": null,
+      "format_id": "234",
+      "label": "Synth Ambient",
+      "resolved_at": "2026-10-13T20:54:27.165070+00:00",
+      "source": "https://www.youtube.com/watch?v=GSfT7H87zq4",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946466/ei/gprOapIS3s6n6g_KhfKwCw/ip/154.162.35.230/id/GSfT7H87zq4.1/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwo45vdLoK8nva7M_hgvxJK_Rn9_RzvyOP2qjgnXsjppdBNZclBajhSfSkRylfv7wbJqvNA1Hj_7/spc/I-rgIRLEOtwfWSk06QV4rrR2svcUxQB-N5hq-IBABwzRNdxe1Gy0cRnTFUFj/vprv/1/reg/0/playlist_type/DVR/initcwndbps/261000/met/1791924866,/mh/7u/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565116,52112905,52184232/mt/1791924521/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRQIhANrRLfbfv2E1nHDAySVaS0ab8-lM1Yl7hsj495s8G2_EAiB6ra_mlOzfCV9bl2wgIQgdG6Gq03JtcpqpzuMTXcG3Xg%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRgIhAJyVwhNMGEh9PSx2fTZI4YgCLyDWm6EXNd9C2au-5Gg4AiEAqvhmoMqLLgiJrdTcUMwGEZOZxFjtfMQJducQZP4VCFE%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "GSfT7H87zq4"
+    },
+    "synthwave": {
+      "error": null,
+      "format_id": "234",
+      "label": "Chill Game",
+      "resolved_at": "2026-10-13T20:58:00.066293+00:00",
+      "source": "https://www.youtube.com/watch?v=4xDzrJKXOOY",
+      "stale": false,
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1791946678/ei/VpvOaovaOq2_mLAPgpOCsQ8/ip/154.162.35.230/id/4xDzrJKXOOY.7/itag/234/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/goi/133/sgoap/gir%3Dyes%3Bitag%3D140/rqh/1/hls_chunk_host/rr1---sn-huobi-5jjk.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/3600/manifest_duration/3600/bui/AWzQHwpcuFEFktJZj3hWqMXHwNKq9nWfB_-Lnr8Hzjtp56-dCA_3UB0nVvho1fYioOE9tZyCl7PtLdVF/spc/mpRQ__9608K6n7Hgb7FWfy8N_H8149kEVjpxRLRi3RRaSwRH_0n2_RvEIbBN/vprv/1/reg/0/playlist_type/DVR/initcwndbps/266625/met/1791925079,/mh/PJ/mm/44/mn/sn-huobi-5jjk/ms/lva/mv/m/mvi/1/pl/22/rms/lva,lva/dover/13/pacing/0/short_key/1/keepalive/yes/fexp/51565115,52112905,52184232,52227521/mt/1791924780/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,goi,sgoap,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AE0s2JYwRgIhAPOo-sa3y0av2xxnQ3OuYxlOdrWS07z02Zxc6PeqZq1kAiEAuX6IksKyD3u_4L4mhTlFUyCqtWLdyR2m9PlTyvU9ZKE%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgPCN7wk-B20CS-jKiwQKS83goXTdImLR0iN9zUmAR130CIQDQF8vP0ftj3gRUOq0tD7JRX1sruJ5e2cmCO67S7uqFZQ%3D%3D/playlist/index.m3u8",
+      "variant": "audio-only",
+      "video_id": "4xDzrJKXOOY"
+    }
+  },
+  "updated_at": "2026-10-13T20:58:00.066513+00:00",
+  "version": 1
+}

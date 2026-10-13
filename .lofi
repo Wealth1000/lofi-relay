@@ -1,24 +1,65 @@
 # -------------------------------------------------------------------
 # lofi – play continuous lofi streams
 # -------------------------------------------------------------------
+#
+# Two backends, one command (LOFI_BACKEND, default "json"):
+#
+#   json  – fetch the resolver's published data/streams.json and play the
+#           signed audio-only m3u8 straight from YouTube's CDN. No host to
+#           keep awake, no API key, no video bytes: the audio-only variant
+#           never carries a video track.
+#   relay – the Render relay: a stable endpoint that resolves and strips
+#           server-side. Kept as a fallback in case YouTube "forgets" about
+#           the resolver or the published URLs. Its free tier spins down, so
+#           this path alone keeps the keep-alive pinger.
+
+# File-scoped on purpose: lofi_json_url (a top-level helper) needs it too,
+# and a `local` in lofi() would not reach the forked restart loop's fetches.
+lofi_base_json="https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/data/streams.json"
+
+# Fetch the current playable URL for an endpoint from the published document.
+# Prints nothing when the URL is unavailable (channel offline, entry null, or
+# the document itself unreachable). A preserved-but-stale URL still prints:
+# signed m3u8s stay valid for hours, so "stale" is "try it, the loop heals".
+lofi_json_url() {
+	local endpoint="$1"
+	local docfile doc
+
+	# mktemp, not a fixed /tmp name: curl -o would follow a pre-planted
+	# symlink, which is exactly what the cover fetch guards against above.
+	docfile="$(mktemp --suffix=.json -t lofi-doc-XXXXXX 2> /dev/null)" || return 1
+
+	if ! curl -fsS -m 15 -o "$docfile" "$lofi_base_json" 2> /dev/null; then
+		rm -f "$docfile"
+		return 1
+	fi
+
+	doc="$(cat "$docfile")"
+	rm -f "$docfile"
+	jq -r --arg e "$endpoint" '.streams[$e].url // empty' <<<"$doc" 2> /dev/null
+}
 
 lofi() {
+	local backend="${LOFI_BACKEND:-json}"
+	local relay_base="https://lofi-relay.onrender.com"
 	local LOFI_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-	local base="https://lofi-relay.onrender.com"
 
-	# flag:endpoint:label — one source of truth for help, dispatch and -R
+	# flag:endpoint:label — one source of truth for help, dispatch and -R.
+	# Endpoint names are canonical: the keys of app/config.py STREAMS. The
+	# resolver publishes data/streams.json under the same names, so a
+	# mismatch here is caught (and named) at startup, not mid-playback.
 	local -a streams=(
-		"r:relax-study:Relax / Study"
-		"g:chill-game:Chill Game"
-		"a:asian-relax-study:Asian Relax / Study"
-		"j:jazz-chill-study:Jazz / Chill Study"
-		"d:sleep-dream:Sleep / Dream"
-		"n:rain-sad:Rain / Sad"
-		"p:piano-focus:Piano / Focus"
 		"h:lofi-house:Lofi House"
+		"r:relax-study:Relax / Study"
 		"b:summer-lofi:Summer Lofi"
+		"d:sleep-dream:Sleep / Dream"
 		"i:synth-ambient:Synth Ambient"
 		"e:study-with-me:Study With Me"
+		"n:sad-rainy:Rain / Sad"
+		"a:asian-relax-study:Asian Relax / Study"
+		"j:jazz-chill-study:Jazz / Chill Study"
+		"s:sleep-chill:Sleep Chill"
+		"p:piano-focus:Piano / Focus"
 		"c:christmas-lofi:Christmas Lofi"
 		"l:classical-study:Classical Study"
 		"t:relaxing-jazz:Relaxing Jazz"
@@ -29,7 +70,7 @@ lofi() {
 		"v:medieval-lofi:Medieval Lofi"
 		"u:gentle-rain:Gentle Rain"
 		"x:dark-ambient:Dark Ambient"
-		"s:synthwave:Synthwave"
+		"g:synthwave:Chill Game"
 	)
 
 	local entry
@@ -44,8 +85,10 @@ lofi() {
 		echo "  -R    Random stream"
 		echo ""
 		echo "Other:"
-		echo "  -health    Check API health"
+		echo "  -health    Check backend health"
 		echo "  -h         Show this help"
+		echo ""
+		echo "Backend: ${LOFI_BACKEND:-json} (set LOFI_BACKEND=relay to use the Render relay)"
 		echo ""
 		return 0
 	fi
@@ -53,17 +96,65 @@ lofi() {
 	if [[ "$1" == "-health" ]]; then
 		# Not named `status`: that is a read-only alias for `$?` in zsh, and
 		# `local status` aborts the function before curl ever runs.
-		local out rc
-		out="$(curl -fsS -m 30 -H "X-API-Key: $LOFI_API_KEY" "$base/health")"
-		rc=$?
+		if [[ "$backend" == relay ]]; then
+			local out rc
+			out="$(curl -fsS -m 30 -H "X-API-Key: $LOFI_API_KEY" "$relay_base/health")"
+			rc=$?
 
-		if (( rc == 0 )); then
-			print -r -- "$out"
-		else
-			print -u2 "lofi: health check failed (curl exit $rc)"
+			if (( rc == 0 )); then
+				print -r -- "$out"
+			else
+				print -u2 "lofi: health check failed (curl exit $rc)"
+			fi
+
+			return $rc
 		fi
 
-		return $rc
+		# json: the resolver document is the health surface. A stale-but-preserved
+		# URL is still playable for hours, so the probe checks the freshest entry
+		# and reports what it finds rather than blocking on a fresh one.
+		local doc status updated playable total probe_url probe
+		doc="$(curl -fsS -m 15 "$lofi_base_json")"
+
+		if [[ -z "$doc" ]]; then
+			print -u2 "lofi: resolver document unreachable (curl exit $?)"
+			return 1
+		fi
+
+		status="$(jq -r '.status // "?"' <<<"$doc")"
+		updated="$(jq -r '.updated_at // "?"' <<<"$doc")"
+		playable="$(jq '[.streams[] | select(.url != null)] | length' <<<"$doc")"
+		total="$(jq '.streams | length' <<<"$doc")"
+
+		print -r -- "lofi: document status=$status updated=$updated playable=$playable/$total"
+
+		probe_url="$(jq -r '.streams[] | select(.stale == false) | select(.url != null) | .url' <<<"$doc" | head -n 1)"
+
+		if [[ -z "$probe_url" ]]; then
+			print -u2 "lofi: no fresh URL in the document — the resolver has not succeeded since the last good publish"
+			return 1
+		fi
+
+		if command -v ffprobe > /dev/null 2>&1; then
+			# A live m3u8 lists its tracks in the playlist, which ffprobe reads
+			# without downloading media. Audio-only (variant audio-only) must
+			# show an audio stream and NO video stream.
+			probe="$(ffprobe -hide_banner -show_entries stream=codec_type -of csv=p=0 "$probe_url" 2> /dev/null | sort -u)"
+
+			if [[ "$probe" == *audio* && "$probe" != *video* ]]; then
+				print -r -- "lofi: probe OK — audio-only stream (fresh entry)"
+			elif [[ "$probe" == *video* ]]; then
+				print -u2 "lofi: probe shows video in the stream — audio-only variant broken, video bytes would be downloaded"
+				return 1
+			else
+				print -u2 "lofi: probe inconclusive (no stream info; upstream may be down)"
+				return 1
+			fi
+		else
+			print -r -- "lofi: ffprobe unavailable — document read succeeded, stream probe skipped"
+		fi
+
+		return 0
 	fi
 
 	if [[ -z "$1" ]]; then
@@ -96,15 +187,14 @@ lofi() {
 	local label="${entry##*:}"
 
 	local dep
-	for dep in mpv cava curl; do
+	for dep in mpv cava curl jq; do
 		if ! command -v "$dep" > /dev/null 2>&1; then
 			print -u2 "lofi: $dep is not installed."
 			return 1
 		fi
 	done
 
-	local stream_url="$base/lofi/$endpoint"
-	local saved_tty player_pid keepalive_pid cover
+	local stream_url="" saved_tty player_pid keepalive_pid="" cover=""
 
 	saved_tty="$(stty -g 2> /dev/null)"
 
@@ -113,59 +203,104 @@ lofi() {
 	# note at the second trap for why the PIDs must be baked in.
 	trap "stty '$saved_tty' 2> /dev/null" EXIT INT TERM
 
-	print -r -- "▶ $label"
+	print -r -- "▶ $label (backend: $backend)"
 
-	# Artwork for the desktop's media widget. mpv-mpris builds `mpris:artUrl`
-	# from --cover-art-files, which takes a *path*, so the image has to exist as
-	# a local file: cover art embedded in the audio stream would only ever reach
-	# mpv's own video window, and that is switched off here.
-	#
-	# mktemp rather than a fixed name -- a predictable /tmp path is a symlink
-	# target, and a fresh path per run also stops the widget from redisplaying a
-	# previous stream's cached image.
-	cover="$(mktemp --suffix=.jpg -t lofi-cover-XXXXXX 2> /dev/null)"
+	if [[ "$backend" == relay ]]; then
+		stream_url="$relay_base/lofi/$endpoint"
 
-	# Armed before the fetch, so a Ctrl+C mid-download still removes the file.
-	trap "
-		rm -f '$cover'
-		stty '$saved_tty' 2> /dev/null
-	" EXIT INT TERM
+		# Artwork for the desktop's media widget, via the relay's thumbnail
+		# endpoint (which derives the image from the video ID, so it never
+		# queues behind yt-dlp). mpv-mpris builds `mpris:artUrl` from
+		# --cover-art-files, which takes a *path*, so the image has to exist
+		# as a local file.
+		#
+		# mktemp rather than a fixed name -- a predictable /tmp path is a
+		# symlink target, and a fresh path per run stops the widget from
+		# redisplaying a previous stream's cached image.
+		cover="$(mktemp --suffix=.jpg -t lofi-cover-XXXXXX 2> /dev/null)"
 
-	# Fetched before mpv starts so the first play already has artwork. The relay
-	# derives this from the video ID, so it costs no yt-dlp extraction -- only
-	# the spin-up that the stream request pays for anyway.
-	if [[ -z "$cover" ]] || ! curl -fsS -m 90 \
-		-o "$cover" \
-		-H "X-API-Key: $LOFI_API_KEY" \
-		"$base/lofi/$endpoint/thumbnail"
-	then
-		# Artwork is cosmetic: never let it keep the music from playing.
-		print -u2 "lofi: could not fetch artwork — continuing without it."
-		rm -f "$cover"
-		cover=""
+		# Armed before the fetch, so a Ctrl+C mid-download still removes the file.
+		trap "
+			rm -f '$cover'
+			stty '$saved_tty' 2> /dev/null
+		" EXIT INT TERM
+
+		if [[ -z "$cover" ]] || ! curl -fsS -m 90 \
+			-o "$cover" \
+			-H "X-API-Key: $LOFI_API_KEY" \
+			"$relay_base/lofi/$endpoint/thumbnail"
+		then
+			# Artwork is cosmetic: never let it keep the music from playing.
+			print -u2 "lofi: could not fetch artwork — continuing without it."
+			rm -f "$cover"
+			cover=""
+		fi
+
+		# The relay spins a free service down after 15 minutes without an
+		# *inbound* request. An in-flight stream is outbound, so it never
+		# resets that timer and the music dies mid-session. Ping /health to
+		# keep the service up. Deliberately tied to playback: the free tier
+		# grants only 750 instance hours a month, so a round-the-clock
+		# pinger would exhaust the quota and suspend the service.
+		(
+			while sleep 600; do
+				curl -fsS -m 30 -o /dev/null \
+					-H "X-API-Key: $LOFI_API_KEY" \
+					"$relay_base/health" || true
+			done
+		) &
+		keepalive_pid=$!
+
+		trap "
+			kill $keepalive_pid 2> /dev/null
+			rm -f '$cover'
+			stty '$saved_tty' 2> /dev/null
+		" EXIT INT TERM
+	else
+		# json: one document fetch yields both the artwork's video ID and the
+		# current URL. The restart loop re-fetches on every attempt, which is
+		# what heals an expired or rotated signed URL (the cron publishes a
+		# fresh one every 30 minutes).
+		local doc video_id
+		if ! doc="$(curl -fsS -m 15 "$lofi_base_json")"; then
+			print -u2 "lofi: resolver document unreachable — cannot start."
+			print -u2 "lofi: try 'lofi -health', or LOFI_BACKEND=relay lofi $1."
+			stty "$saved_tty" 2> /dev/null
+			return 1
+		fi
+
+		# Name drift is a configuration bug, not a transient: fail fast and
+		# say which side moved.
+		if ! jq -e --arg e "$endpoint" '.streams | has($e)' <<<"$doc" > /dev/null 2>&1; then
+			print -u2 "lofi: '$endpoint' is not in the resolver document — name drift between this script and app/config.py."
+			stty "$saved_tty" 2> /dev/null
+			return 1
+		fi
+
+		cover="$(mktemp --suffix=.jpg -t lofi-cover-XXXXXX 2> /dev/null)"
+
+		trap "
+			rm -f '$cover'
+			stty '$saved_tty' 2> /dev/null
+		" EXIT INT TERM
+
+		video_id="$(jq -r --arg e "$endpoint" '.streams[$e].video_id // empty' <<<"$doc" 2> /dev/null)"
+
+		if [[ -n "$video_id" ]]; then
+			# i.ytimg.com is derived from the video ID: no auth, no host, no
+			# extraction. maxresdefault is not generated for every video, so
+			# hqdefault is the guaranteed fallback.
+			curl -fsS -m 15 -o "$cover" \
+				"https://i.ytimg.com/vi/$video_id/maxresdefault.jpg" \
+			|| curl -fsS -m 15 -o "$cover" \
+				"https://i.ytimg.com/vi/$video_id/hqdefault.jpg" \
+			|| {
+				print -u2 "lofi: could not fetch artwork — continuing without it."
+				rm -f "$cover"
+				cover=""
+			}
+		fi
 	fi
-
-	# Render spins a free service down after 15 minutes without an *inbound*
-	# request. An in-flight stream is outbound, so it never resets that timer
-	# and the music dies mid-session. Ping /health to keep the service up.
-	#
-	# Deliberately tied to playback: the free tier grants only 750 instance
-	# hours a month (~31 days), so a round-the-clock pinger would exhaust the
-	# quota and get the service suspended.
-	(
-		while sleep 600; do
-			curl -fsS -m 30 -o /dev/null \
-				-H "X-API-Key: $LOFI_API_KEY" \
-				"$base/health" || true
-		done
-	) &
-	keepalive_pid=$!
-
-	trap "
-		kill $keepalive_pid 2> /dev/null
-		rm -f '$cover'
-		stty '$saved_tty' 2> /dev/null
-	" EXIT INT TERM
 
 	local -a mpv_args=(
 		--no-video
@@ -179,22 +314,30 @@ lofi() {
 		--cache-pause=yes
 		--cache-pause-wait=5
 		--network-timeout=120
-		# Heal brief drops without restarting mpv entirely.
+		# Heal brief upstream blips without restarting mpv entirely.
 		--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5
-		--http-header-fields="X-API-Key: $LOFI_API_KEY"
-		# Name the stream in the media widget; without it the notification shows
-		# the bare relay URL.
+		# Name the stream in the media widget; without it the notification
+		# shows the bare URL.
 		--force-media-title="$label"
 	)
 
-	# Appended only when the fetch succeeded: pointing mpv at a nonexistent file
-	# just logs an error and gains nothing.
+	# Only the relay authenticates; the json backend plays a signed public
+	# URL and the document is public on purpose (it holds public stream
+	# sources and hours-lived signatures, no secrets).
+	if [[ "$backend" == relay ]]; then
+		mpv_args+=(--http-header-fields="X-API-Key: $LOFI_API_KEY")
+	fi
+
+	# Appended only when the fetch succeeded: pointing mpv at a nonexistent
+	# file just logs an error and gains nothing.
 	if [[ -n "$cover" ]]; then
 		mpv_args+=(--cover-art-files="$cover")
 	fi
 
-	# Restart mpv if the stream ends: a spin-up takes about a minute, and the
-	# server may be restarted at any time on the free tier.
+	# Restart mpv if the stream ends: a signed URL rotates when YouTube
+	# restarts the channel, and the relay's service may restart at any time
+	# on the free tier. The URL is re-acquired on every attempt, which is
+	# what heals it.
 	(
 		trap 'kill $child 2> /dev/null; exit' TERM
 
@@ -202,8 +345,29 @@ lofi() {
 
 		while :; do
 			started=$SECONDS
+			play_url=""
 
-			mpv "${mpv_args[@]}" "$stream_url" &
+			if [[ "$backend" == relay ]]; then
+				play_url="$stream_url"
+			else
+				play_url="$(lofi_json_url "$endpoint")"
+
+				if [[ -z "$play_url" ]]; then
+					# The channel may be offline (its document entry is null)
+					# or the document unreachable. Either way the next cron
+					# tick (30 min) or the next attempt can heal it.
+					print -u2 "lofi: no playable URL for $label yet — retrying in 30s."
+					if (( ++fails >= 10 )); then
+						print -u2 "lofi: stream keeps failing immediately — giving up."
+						print -u2 "lofi: try 'lofi -health'."
+						break
+					fi
+					sleep 30
+					continue
+				fi
+			fi
+
+			mpv "${mpv_args[@]}" "$play_url" &
 			child=$!
 			wait $child
 
@@ -211,7 +375,7 @@ lofi() {
 				fails=0
 			elif (( ++fails >= 10 )); then
 				# Failing instantly and repeatedly means the stream is not
-				# coming back (bad key, bad endpoint, service suspended).
+				# coming back (bad endpoint, offline channel, broken document).
 				print -u2 "lofi: stream keeps failing immediately — giving up."
 				print -u2 "lofi: try 'lofi -health'."
 				break
@@ -222,12 +386,13 @@ lofi() {
 	) &
 	player_pid=$!
 
-	# The PIDs are baked into the trap body rather than referenced as variables,
-	# because zsh unsets a function's locals *before* running its EXIT trap:
-	# `$player_pid` would already be empty when the trap fires, so nothing got
-	# killed. That orphaned the keep-alive pinger, which then held the service
-	# awake around the clock and would burn the free tier's 750 monthly instance
-	# hours -- exhausting them suspends every Free service in the workspace.
+	# The PIDs are baked into the trap body rather than referenced as
+	# variables, because zsh unsets a function's locals *before* running its
+	# EXIT trap: `$player_pid` would already be empty when the trap fires, so
+	# nothing got killed. That orphaned the keep-alive pinger, which then held
+	# the relay awake around the clock and would have burned the free tier's
+	# 750 monthly instance hours. An empty PID (the json backend runs no
+	# pinger) is simply dropped from the word list.
 	trap "
 		kill $player_pid $keepalive_pid 2> /dev/null
 		rm -f '$cover'
@@ -272,14 +437,13 @@ ytcava() {
 		--no-video \
 		--really-quiet \
 		--no-input-terminal \
-		--ytdl-format="bestaudio/best" \
+		--ytdl-format="234/233/bestaudio/bestaudio" \
 		"$url" &
-
 	mpv_pid=$!
 
-	# Baked in, not referenced: zsh clears function locals before the EXIT trap
-	# runs, so `$mpv_pid` would be empty and mpv would keep playing after ytcava
-	# exited.
+	# Baked in, not referenced: zsh clears function locals before the EXIT
+	# trap runs, so `$mpv_pid` would be empty and mpv would keep playing
+	# after ytcava exited.
 	trap "
 		kill $mpv_pid 2> /dev/null
 		stty '$saved_tty' 2> /dev/null

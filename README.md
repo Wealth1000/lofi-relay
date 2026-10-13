@@ -4,9 +4,15 @@ A lightweight FastAPI service that turns YouTube livestreams into authenticated,
 
 Lofi Relay uses **yt-dlp** to resolve YouTube livestreams, **Deno** to handle YouTube's JavaScript challenges, and **FFmpeg** to relay the resulting HLS audio stream as AAC.
 
+Since YouTube began flagging the relay's static Render egress IP, this repo now has **two ways to reach a stream**:
+
+* **The resolver (primary path):** a free GitHub Actions cron resolves every stream to a signed **audio-only** m3u8 URL and publishes them to [`data/streams.json`](data/streams.json). Clients (`.lofi`) play the URL straight from YouTube's CDN — no host, no card, no video bytes anywhere (the audio-only variant never carries a video track), and no keep-alive pinger.
+* **The relay (fallback below):** the FastAPI service as before. Kept alive behind `LOFI_BACKEND=relay` in case YouTube "forgets" about the resolver's URLs again.
+
 ## Features
 
 * 🎵 Audio-only YouTube livestream relay
+* 📡 Resolver cron that publishes signed audio-only m3u8 URLs (no host, no video bytes)
 * 🖼️ Serves each stream's YouTube artwork for client media widgets
 * 🔐 API-key authentication
 * ⚡ FastAPI-based HTTP API
@@ -26,7 +32,7 @@ Lofi Relay uses **yt-dlp** to resolve YouTube livestreams, **Deno** to handle Yo
 
 Production:
 
-`https://lofi-relay.fly.dev`
+`https://lofi-relay.onrender.com`
 
 ### Authentication
 
@@ -120,89 +126,38 @@ cached in memory for `THUMBNAIL_TTL` seconds.
 
 ### Lofi Streams
 
-All stream endpoints require authentication.
+All stream endpoints require authentication. The canonical names are the keys of
+`STREAMS` in [`app/config.py`](app/config.py); the resolver publishes one entry
+per name in `data/streams.json` and `.lofi` keys off the same names.
 
-#### Relax / Study
+| Endpoint                    | Stream              | Source (video ID) |
+| --------------------------- | ------------------- | ----------------- |
+| `/lofi/lofi-house`          | Lofi House          | `3PFJ9SETS4M`     |
+| `/lofi/relax-study`         | Relax / Study       | `rFZHOHl-L8A`     |
+| `/lofi/summer-lofi`         | Summer Lofi         | `0muHFBSiybw`     |
+| `/lofi/sleep-dream`         | Sleep / Dream       | `VAlMDl00mYY`     |
+| `/lofi/synth-ambient`       | Synth Ambient       | `GSfT7H87zq4`     |
+| `/lofi/study-with-me`       | Study With Me       | `qGohtGC5Rtk`     |
+| `/lofi/sad-rainy`           | Rain / Sad          | `CwPCy1GLS38`     |
+| `/lofi/asian-relax-study`   | Asian Relax / Study | `1Tl2FtV06qo`     |
+| `/lofi/jazz-chill-study`    | Jazz / Chill Study  | `E2vONfzoyRI`     |
+| `/lofi/sleep-chill`         | Sleep Chill         | `JD-kMIpDfnY`     |
+| `/lofi/piano-focus`         | Piano / Focus       | `N0snMcR6aaA`     |
+| `/lofi/christmas-lofi`      | Christmas Lofi      | `XSXEaikz0Bc`     |
+| `/lofi/classical-study`     | Classical Study     | `jXAEIWcGXwE`     |
+| `/lofi/relaxing-jazz`       | Relaxing Jazz       | `A8jDx9TLMQc`     |
+| `/lofi/halloween-lofi`      | Halloween Lofi      | `3GQY80jyysQ`     |
+| `/lofi/fireplace-ambience`  | Fireplace Ambience  | `q_4KI-ChIIs`     |
+| `/lofi/chill-guitar`        | Chill Guitar        | `E_XmwjgRLz8`     |
+| `/lofi/sleep-ambient`       | Sleep Ambient       | `xORCbIptqcc`     |
+| `/lofi/medieval-lofi`       | Medieval Lofi       | `IxPANmjPaek`     |
+| `/lofi/gentle-rain`         | Gentle Rain         | `-OekvEFm1lo`     |
+| `/lofi/dark-ambient`        | Dark Ambient        | `S_MOd40zlYU`     |
+| `/lofi/synthwave`          | Chill Game          | `4xDzrJKXOOY`     |
 
-```http
-GET /lofi/relax-study
-```
-
-Source:
-
-`https://www.youtube.com/watch?v=rFZHOHl-L8A`
-
----
-
-#### Chill Game
-
-```http
-GET /lofi/chill-game
-```
-
-Source:
-
-`https://www.youtube.com/live/4xDzrJKXOOY`
-
----
-
-#### Asian Relax / Study
-
-```http
-GET /lofi/asian-relax-study
-```
-
-Source:
-
-`https://www.youtube.com/live/1Tl2FtV06qo`
-
----
-
-#### Jazz Chill / Study
-
-```http
-GET /lofi/jazz-chill-study
-```
-
-Source:
-
-`https://www.youtube.com/live/E2vONfzoyRI`
-
----
-
-#### Sleep / Dream
-
-```http
-GET /lofi/sleep-dream
-```
-
-Source:
-
-`https://www.youtube.com/live/VAlMDl00mYY`
-
----
-
-#### Rain / Sad
-
-```http
-GET /lofi/rain-sad
-```
-
-Source:
-
-`https://www.youtube.com/live/CwPCy1GLS38`
-
----
-
-#### Piano / Focus
-
-```http
-GET /lofi/piano-focus
-```
-
-Source:
-
-`https://www.youtube.com/live/N0snMcR6aaA`
+Seasonal channels (`christmas-lofi`, `halloween-lofi`) are offline most of the
+year; the resolver records them as `url: null` + an error, which is correct
+behaviour, not a resolver bug.
 
 ---
 
@@ -312,6 +267,62 @@ FastAPI
 
 The service does not download the entire livestream. yt-dlp resolves the current YouTube stream URL, after which FFmpeg relays the audio to the client.
 
+This diagram describes the **relay fallback** (used when `LOFI_BACKEND=relay`). The primary client path is the resolver, below.
+
+---
+
+## Resolver (Primary Client Path)
+
+A scheduled GitHub Actions workflow (`.github/workflows/resolve-streams.yml`)
+runs every 30 minutes on a **fresh, ephemeral runner** — the runner's egress
+IP rotates per run, unlike Render's static IP that YouTube has started
+flagging. Public-repo Actions are free and uncapped, and no card is required
+anywhere in this path.
+
+Each run:
+
+1. Pulls the cookie jar from the private Gist (same single source of truth as
+   the relay; the jar is armor against flagged runner IPs, not a gate —
+   public channels resolve jar-less).
+2. Resolves every source in `app/config.py::STREAMS` with yt-dlp, requesting
+   the **audio-only** HLS rungs first (`234/233/bestaudio/best`). Verified
+   2026-10-13: itag-234 live playlists serve 5-second segments that are pure
+   AAC (~130 kb/s, no video track). URL-only extraction — the runner never
+   downloads media bytes.
+3. Publishes the result as [`data/streams.json`](data/streams.json), committed
+   by the workflow. The document is **merge-preserved**: a failed refresh
+   keeps the last known-good URL (signed m3u8s stay valid for hours; observed
+   ~24 h), a session-level rejection publishes `status: "stale"` over the
+   last good data, and a run with nothing playable at all fails red.
+
+The client side is the `json` backend of `.lofi` (the default): it fetches the
+document once, plays the signed m3u8 with mpv, fetches cover art straight from
+`i.ytimg.com` by video ID, and re-fetches the document on every restart-loop
+iteration so a rotated URL self-heals within one cron tick.
+
+```text
+GitHub Actions cron (30 min, rotating IP, free, no card)
+  │  yt-dlp + cookie-jar Gist → signed audio-only m3u8 × 22 streams
+  ▼
+data/streams.json (public raw URL)
+  │
+  ▼
+your .lofi (json backend) → mpv → YouTube CDN (audio only, ~16 KB/s)
+```
+
+**Data cost of the whole design:** the client line carries audio only
+(~130 kb/s ≈ 16 KB/s). No host downloads video, because the audio-only
+variant has no video track — the "who bears the video egress" question no
+longer has a video to bear.
+
+**Known unknown (the second-IP gate):** the signed URLs embed the resolving
+IP in their signature parameters. If YouTube ever IP-binds them, a
+runner-resolved URL would 403 from a residential IP. `lofi -health` probes a
+fresh entry, and the pre-planned escapes are: (a) the Cloudflare Worker hop
+(CF's network fetches the segments), (b) mpv's local yt-dlp resolve (your
+residential IP is exactly the one YouTube likes), (c) `LOFI_BACKEND=relay`.
+Until the gate passes from your machine, Render stays up.
+
 ---
 
 ## Project Structure
@@ -321,16 +332,29 @@ lofi-relay/
 ├── app/
 │   ├── __init__.py
 │   ├── auth.py
-│   ├── config.py
+│   ├── config.py          # STREAMS (canonical names), STREAM_LABELS, env config
 │   ├── main.py
 │   └── services/
 │       ├── __init__.py
 │       ├── stream.py
 │       ├── thumbnail.py
-│       └── youtube.py
+│       ├── youtube.py
+│       └── jar_store.py   # cookie-jar Gist (shared by relay + resolver)
 │
+├── tools/
+│   ├── __init__.py
+│   └── resolve_streams.py # standalone resolver (no FastAPI)
+├── tests/
+│   └── test_resolver.py
+├── .github/
+│   └── workflows/
+│       └── resolve-streams.yml  # the 30-min cron (primary path)
+├── data/
+│   └── streams.json       # published audio-only URLs (committed by the cron)
+├── .lofi                 # zsh client: json backend (default) + relay fallback
 ├── Dockerfile
 ├── requirements.txt
+├── requirements-dev.txt
 ├── .dockerignore
 ├── .gitignore
 └── README.md
@@ -385,7 +409,13 @@ the **single source of truth**. The relay is read-only on it:
 
 When YouTube rejects the jar outright, `/lofi/*` returns a `503` with
 `YouTube session rejected` in the detail, and the relay stops instead of
-retrying — the fix is a fresh cookie export, not a retry.
+retrying — the fix is a fresh cookie export, not a retry. The resolver's cron
+fails the same way: it publishes `status: "stale"` over the last good
+document (preserving the playable URLs) and flags the run red.
+
+The `JAR_GIST_ID` / `JAR_GITHUB_TOKEN` pair is also exposed to the resolver
+workflow as Actions repository secrets, so the cron and the relay arm from
+the same jar.
 
 The browser job never overwrites the Gist on a failed login: it keeps the
 last known-good jar and exits non-zero so the failure is visible. A manual
@@ -418,9 +448,9 @@ Two supporting details:
 
 ---
 
-## Free Tier Behaviour
+## Free Tier Behaviour (relay backend)
 
-The production deployment runs on Render's free tier, which
+The relay deployment runs on Render's free tier, which
 [spins a service down](https://render.com/docs/free) after **15 minutes without
 inbound traffic**:
 
@@ -431,6 +461,11 @@ inbound traffic**:
 An in-flight audio stream is *outbound* traffic, so **it does not keep the
 service awake**. Left alone, playback dies roughly 15 minutes into a listening
 session. Render also notes it "might restart a Free web service at any time".
+
+This only affects the **relay backend** (`LOFI_BACKEND=relay`): the pinger
+below is what the relay path of `.lofi` runs while playing, tied to playback
+so it never burns instance-hours around the clock. The `json` backend has no
+host to keep awake — Cloudflare and GitHub Actions never sleep.
 
 Clients are therefore expected to send a periodic keep-alive request while
 playing:
@@ -481,6 +516,33 @@ Health check:
 
 ```bash
 curl http://127.0.0.1:8000/health
+```
+
+### Resolver
+
+The resolver is standalone: it imports only `app.config` (the stream map) and
+the cookie-jar store, never the FastAPI app. Run it locally to preview a
+document without touching the published one:
+
+```bash
+python -m tools.resolve_streams --dry-run
+```
+
+Or write a real document (the workflow does exactly this, then commits):
+
+```bash
+python -m tools.resolve_streams
+```
+
+Set `JAR_GIST_ID` / `JAR_GITHUB_TOKEN` in the environment to resolve with the
+Gist's cookie jar; unset, it resolves jar-less, which public channels accept.
+
+Run the tests (seam: a stubbed `yt_dlp` stands in for the YouTube boundary,
+assertions are on the published document):
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest
 ```
 
 ---
@@ -571,29 +633,26 @@ never-overwrite-on-failure guardrail.
 
 ## Current Stream List
 
-| Endpoint                  | Stream              |
-| ------------------------- | ------------------- |
-| `/lofi/relax-study`       | Relax / Study       |
-| `/lofi/chill-game`        | Chill Game          |
-| `/lofi/asian-relax-study` | Asian Relax / Study |
-| `/lofi/jazz-chill-study`  | Jazz Chill / Study  |
-| `/lofi/sleep-dream`       | Sleep / Dream       |
-| `/lofi/rain-sad`          | Rain / Sad          |
-| `/lofi/piano-focus`       | Piano / Focus       |
-
-Additional streams can be added in `app/config.py`.
+The canonical list is `STREAMS` in [`app/config.py`](app/config.py) (22 streams,
+names in the table above under "Lofi Streams") and `data/streams.json`, which
+the resolver publishes from it. Add a stream by adding one key to `STREAMS`
+(+ a label in `STREAM_LABELS`) and a matching `flag:name:label` line in `.lofi`.
 
 ---
 
 ## Production
 
-The current production deployment is hosted on Render:
+The relay (fallback) is hosted on Render:
 
 ```text
 https://lofi-relay.onrender.com
 ```
 
 The service exposes the FastAPI application on the port supplied by the hosting environment.
+
+The primary client path needs no hosted service: `data/streams.json` is
+committed to this public repo by the resolver cron, and clients fetch it
+straight from GitHub.
 
 ---
 
@@ -606,15 +665,18 @@ The service exposes the FastAPI application on the port supplied by the hosting 
 * Deno
 * FFmpeg
 * Docker
-* Render
+* Render (relay fallback)
+* GitHub Actions (resolver cron + cookie refresh)
 
 ---
 
 ## Status
 
-**Complete and operational.**
+**Resolver: live.** The cron publishes `data/streams.json` every 30 minutes;
+verify it from a residential IP with `lofi -health` before treating the
+relay as disposable.
 
-The production pipeline has been tested successfully from client request through:
+**Relay: operational fallback**, tested end-to-end:
 
 ```text
 API authentication
@@ -626,4 +688,5 @@ API authentication
 → HTTP client
 ```
 
-The client application can consume the individual `/lofi/*` endpoints directly.
+The client can consume the `/lofi/*` relay endpoints directly, or the
+resolver's published URLs (default).

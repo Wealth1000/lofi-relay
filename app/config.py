@@ -46,6 +46,36 @@ FFMPEG_MAX_RESTARTS = int(os.getenv("FFMPEG_MAX_RESTARTS", "5"))
 FFMPEG_RESTART_DELAY = float(os.getenv("FFMPEG_RESTART_DELAY", "2"))
 FFMPEG_RESTART_DELAY_MAX = float(os.getenv("FFMPEG_RESTART_DELAY_MAX", "30"))
 
+# Display labels for the media widget / help text. Canonical stream names are
+# the STREAMS keys below: the resolver's published document, the client's flag
+# table (.lofi) and this map must all key off the same names.
+STREAM_LABELS = {
+    "lofi-house": "Lofi House",
+    "relax-study": "Relax / Study",
+    "summer-lofi": "Summer Lofi",
+    "sleep-dream": "Sleep / Dream",
+    "synth-ambient": "Synth Ambient",
+    "study-with-me": "Study With Me",
+    "sad-rainy": "Rain / Sad",
+    "asian-relax-study": "Asian Relax / Study",
+    "jazz-chill-study": "Jazz / Chill Study",
+    "sleep-chill": "Sleep Chill",
+    "piano-focus": "Piano / Focus",
+    "christmas-lofi": "Christmas Lofi",
+    "classical-study": "Classical Study",
+    "relaxing-jazz": "Relaxing Jazz",
+    "halloween-lofi": "Halloween Lofi",
+    "fireplace-ambience": "Fireplace Ambience",
+    "chill-guitar": "Chill Guitar",
+    "sleep-ambient": "Sleep Ambient",
+    "medieval-lofi": "Medieval Lofi",
+    "gentle-rain": "Gentle Rain",
+    "dark-ambient": "Dark Ambient",
+    # 4xDzrJKXOOY is the channel the README has long called "Chill Game"; the
+    # key was renamed to match the channel's actual branding.
+    "synthwave": "Chill Game",
+}
+
 STREAMS = {
     "lofi-house": "https://www.youtube.com/watch?v=3PFJ9SETS4M",
     "relax-study": "https://www.youtube.com/watch?v=rFZHOHl-L8A",

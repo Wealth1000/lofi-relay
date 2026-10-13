@@ -1,0 +1,74 @@
+# Resolve every configured YouTube source to a signed, audio-only m3u8 URL
+# and publish it as data/streams.json.
+#
+# Runs on a schedule against a FRESH ephemeral runner every time, which is the
+# whole point: the egress IP rotates per run, unlike Render's static one that
+# YouTube has started flagging. Standard runners in a public repository are
+# free and uncapped, and no card is required.
+#
+# The document is merge-preserved (see tools/resolve_streams.py): a bad run
+# never blanks a previously good URL, so the raw file is always something a
+# client can at least try.
+name: Resolve stream URLs
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+# A stuck run must not overlap the next cron tick: queue same-branch runs.
+concurrency:
+  group: resolve-streams
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      # The cookie jar lives in a private Gist (single source of truth). When
+      # these are unset the resolver degrades to jar-less extraction, which
+      # public channels accept -- the jar is armor against flagged runner
+      # IPs, not a gate.
+      JAR_GIST_ID: ${{ secrets.JAR_GIST_ID }}
+      JAR_GITHUB_TOKEN: ${{ secrets.JAR_GITHUB_TOKEN }}
+      JAR_TIMEOUT: "15"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # yt-dlp's JS-challenge solver runs on Deno (ejs remote component), so
+      # the runner needs it the way the Dockerfile does.
+      - name: Install Deno
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
+
+      # Same dependency surface and the same smoke check as the Dockerfile:
+      # yt-dlp + curl_cffi must agree on a supported version for browser
+      # impersonation to load, and a disagreement surfaces only as a silent
+      # fallback to a stock Python fingerprint. Fail the run instead.
+      - name: Install extraction dependencies
+        run: |
+          python -m pip install --no-cache-dir "yt-dlp[default]" "curl_cffi>=0.10,<0.17"
+          python -c "from yt_dlp.YoutubeDL import YoutubeDL; from yt_dlp.networking.impersonate import ImpersonateTarget; YoutubeDL({'impersonate': ImpersonateTarget.from_str('chrome')}); print('browser impersonation OK')"
+
+      - name: Resolve all streams
+        run: python -m tools.resolve_streams
+
+      - name: Commit the updated document
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/streams.json
+          if git diff --cached --quiet; then
+            echo "Document unchanged; nothing to commit"
+          else
+            git commit -m "Resolve stream URLs ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+            git push origin HEAD
