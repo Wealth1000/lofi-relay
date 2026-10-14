@@ -2,20 +2,25 @@
 # lofi – play continuous lofi streams
 # -------------------------------------------------------------------
 #
-# Two backends, one command (LOFI_BACKEND, default "json"):
+# Three backends, one command (LOFI_BACKEND, default "worker"):
 #
-#   json  – fetch the resolver's published data/streams.json and play the
-#           signed audio-only m3u8 straight from YouTube's CDN. No host to
-#           keep awake, no API key, no video bytes: the audio-only variant
-#           never carries a video track.
-#   relay – the Render relay: a stable endpoint that resolves and strips
-#           server-side. Kept as a fallback in case YouTube "forgets" about
-#           the resolver or the published URLs. Its free tier spins down, so
-#           this path alone keeps the keep-alive pinger.
+#   worker – fetch the resolver's document, play via a Cloudflare Worker that
+#            strips video from muxed streams on the fly. Audio-only streams
+#            pass through directly. Zero server cost, ~58 MB/hour regardless
+#            of what YouTube serves the runner. No API key needed.
+#   json   – same as worker but plays the raw GitHub-published URL directly.
+#            Works when your residential IP gets audio-only rungs; falls back
+#            to video bytes when the runner got muxed-fallback. Kept for
+#            debugging and when the worker is not yet deployed.
+#   relay  – the Render relay: resolves and strips server-side. Fallback for
+#            when both worker and json paths fail. Free tier spins down, so
+#            this path alone keeps the keep-alive pinger.
 
-# File-scoped on purpose: lofi_json_url (a top-level helper) needs it too,
-# and a `local` in lofi() would not reach the forked restart loop's fetches.
+# File-scoped on purpose: helpers need them and a `local` in lofi() would not
+# reach the forked restart loop's fetches.
 lofi_base_json="https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/data/streams.json"
+# Set this to your deployed worker URL (e.g. https://lofi-relay.<your-name>.workers.dev)
+lofi_base_worker="${LOFI_WORKER_BASE:-}"
 
 # Fetch the current playable URL for an endpoint from the published document.
 # Prints nothing when the URL is unavailable (channel offline, entry null, or
@@ -39,8 +44,24 @@ lofi_json_url() {
 	jq -r --arg e "$endpoint" '.streams[$e].url // empty' <<<"$doc" 2> /dev/null
 }
 
+# Fetch the stream URL from the Cloudflare Worker.
+# The worker returns {"url": "...", "variant": "..."} for audio-only or
+# {"url": "<worker-rewritten-m3u8>", "variant": "muxed-fallback"} for muxed.
+# In both cases the returned URL is directly playable by mpv.
+lofi_worker_url() {
+	local endpoint="$1"
+
+	if [[ -z "$lofi_base_worker" ]]; then
+		return 1
+	fi
+
+	local resp
+	resp="$(curl -fsS -m 15 "${lofi_base_worker}/api/play/${endpoint}" 2>/dev/null)" || return 1
+	jq -r '.url // empty' <<<"$resp" 2>/dev/null
+}
+
 lofi() {
-	local backend="${LOFI_BACKEND:-json}"
+	local backend="${LOFI_BACKEND:-worker}"
 	local relay_base="https://lofi-relay.onrender.com"
 	local LOFI_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
@@ -88,7 +109,7 @@ lofi() {
 		echo "  -health    Check backend health"
 		echo "  -h         Show this help"
 		echo ""
-		echo "Backend: ${LOFI_BACKEND:-json} (set LOFI_BACKEND=relay to use the Render relay)"
+		echo "Backend: ${LOFI_BACKEND:-worker} (set LOFI_BACKEND=json or relay to switch)"
 		echo ""
 		return 0
 	fi
@@ -108,6 +129,26 @@ lofi() {
 			fi
 
 			return $rc
+		fi
+
+		# worker: health = can we reach the worker and get a valid response?
+		if [[ "$backend" == worker ]]; then
+			if [[ -z "$lofi_base_worker" ]]; then
+				print -u2 "lofi: LOFI_WORKER_BASE not set — worker backend unavailable"
+				return 1
+			fi
+			local wresp
+			wresp="$(curl -fsS -m 15 "${lofi_base_worker}/api/streams" 2>/dev/null)" || {
+				print -u2 "lofi: worker unreachable (curl exit $?)"
+				return 1
+			}
+			local wstatus wupdated wplayable wtotal
+			wstatus="$(jq -r '.status // "?"' <<<"$wresp")"
+			wupdated="$(jq -r '.updated_at // "?"' <<<"$wresp")"
+			wplayable="$(jq '[.streams[] | select(.url != null)] | length' <<<"$wresp")"
+			wtotal="$(jq '.streams | length' <<<"$wresp")"
+			print -r -- "lofi: worker status=$wstatus updated=$wupdated playable=$wplayable/$wtotal"
+			return 0
 		fi
 
 		# json: the resolver document is the health surface. A stale-but-preserved
@@ -349,6 +390,8 @@ lofi() {
 
 			if [[ "$backend" == relay ]]; then
 				play_url="$stream_url"
+			elif [[ "$backend" == worker ]]; then
+				play_url="$(lofi_worker_url "$endpoint")"
 			else
 				play_url="$(lofi_json_url "$endpoint")"
 
