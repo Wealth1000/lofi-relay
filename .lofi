@@ -22,7 +22,7 @@ lofi_base_json="https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/d
 # Deployed Cloudflare Worker: strips video from muxed streams on the fly,
 # serves audio-only through Cloudflare's edge. Always on, no cold starts.
 # Override with LOFI_WORKER_BASE if you deploy your own instance.
-lofi_base_worker="https://lofi-relay.WORKER.workers.dev"
+lofi_base_worker="${LOFI_WORKER_BASE:-}"
 
 # Fetch the current playable URL for an endpoint from the published document.
 # Prints nothing when the URL is unavailable (channel offline, entry null, or
