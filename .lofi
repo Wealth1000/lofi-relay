@@ -19,10 +19,10 @@
 # File-scoped on purpose: helpers need them and a `local` in lofi() would not
 # reach the forked restart loop's fetches.
 lofi_base_json="https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/data/streams.json"
-# Set this to your deployed worker URL (e.g. https://lofi-relay.<your-name>.workers.dev)
-lofi_base_worker="${LOFI_WORKER_BASE:-}"
-# TODO: replace with your deployed Worker URL after `pnpm deploy`:
-# lofi_base_worker="https://lofi-relay-xxx.workers.dev"
+# Deployed Cloudflare Worker: strips video from muxed streams on the fly,
+# serves audio-only through Cloudflare's edge. Always on, no cold starts.
+# Override with LOFI_WORKER_BASE if you deploy your own instance.
+lofi_base_worker="https://lofi-relay.WORKER.workers.dev"
 
 # Fetch the current playable URL for an endpoint from the published document.
 # Prints nothing when the URL is unavailable (channel offline, entry null, or
@@ -52,11 +52,6 @@ lofi_json_url() {
 # In both cases the returned URL is directly playable by mpv.
 lofi_worker_url() {
 	local endpoint="$1"
-
-	if [[ -z "$lofi_base_worker" ]]; then
-		return 1
-	fi
-
 	local resp
 	resp="$(curl -fsS -m 15 "${lofi_base_worker}/api/play/${endpoint}" 2>/dev/null)" || return 1
 	jq -r '.url // empty' <<<"$resp" 2>/dev/null
@@ -135,10 +130,6 @@ lofi() {
 
 		# worker: health = can we reach the worker and get a valid response?
 		if [[ "$backend" == worker ]]; then
-			if [[ -z "$lofi_base_worker" ]]; then
-				print -u2 "lofi: LOFI_WORKER_BASE not set — worker backend unavailable"
-				return 1
-			fi
 			local wresp
 			wresp="$(curl -fsS -m 15 "${lofi_base_worker}/api/streams" 2>/dev/null)" || {
 				print -u2 "lofi: worker unreachable (curl exit $?)"
