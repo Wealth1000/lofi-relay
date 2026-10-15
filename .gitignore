@@ -5,3 +5,4 @@ __pycache__/
 .env
 
 youtube-cookies.txt
+worker/node_modules/

@@ -1,0 +1,7 @@
+# pnpm v12 stores build-script approvals here.
+# These three packages ship postinstall scripts that place native binaries
+# where wrangler expects them.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true

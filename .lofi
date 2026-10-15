@@ -21,6 +21,8 @@
 lofi_base_json="https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/data/streams.json"
 # Set this to your deployed worker URL (e.g. https://lofi-relay.<your-name>.workers.dev)
 lofi_base_worker="${LOFI_WORKER_BASE:-}"
+# TODO: replace with your deployed Worker URL after `pnpm deploy`:
+# lofi_base_worker="https://lofi-relay-xxx.workers.dev"
 
 # Fetch the current playable URL for an endpoint from the published document.
 # Prints nothing when the URL is unavailable (channel offline, entry null, or
