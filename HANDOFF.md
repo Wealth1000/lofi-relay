@@ -8,9 +8,9 @@
 
 ## Status at Last Session
 
-The migration off Render is **partially complete**. The resolver cron and client rewrite are live. The one remaining open question is whether YouTube's audio-only HLS rungs (itag 234/233) are accessible from a datacenter egress IP — they are **not**, which means the published `data/streams.json` currently contains **muxed-fallback** URLs (itag 96, ~520 MB/hour) instead of the target audio-only ones (~58 MB/hour).
+The migration off Render is **substantially complete**. The resolver cron and client rewrite are live. YouTube's audio-only HLS rungs (itag 234/233) are **not** accessible from a datacenter egress IP, so the published `data/streams.json` contains **muxed-fallback** URLs (itag 96, ~520 MB/hour) — this is by design now: the Cloudflare Worker strips the video at the edge, and the client downloads only audio (~58 MB/hour equivalent, measured 15 KB/s).
 
-A Cloudflare Worker solution was drafted but not yet deployed.
+The Cloudflare Worker is **deployed and verified** (2026-10-15): JSON contract, PMT-based segment stripping, 30 s mpv playback, 10× bandwidth reduction all confirmed. Remaining: run the worker as primary for 7 clean days, then tear down Render (Priority 6).
 
 ---
 
@@ -45,12 +45,12 @@ Three backends, selected via `LOFI_BACKEND` env var (default: `worker`):
 
 | Backend | Behavior | When to use |
 |---------|----------|-------------|
-| `worker` (default) | Fetches document from CF Worker `/api/play/<endpoint>`, plays result directly via mpv | **Primary path once worker is deployed** |
+| `worker` (default) | Fetches document from CF Worker `/api/play/<endpoint>`, plays result directly via mpv | **Primary path — deployed and verified 2026-10-15** |
 | `json` | Fetches `data/streams.json` directly from GitHub raw, plays the raw URL | Debugging, or when your residential IP gets audio-only |
 | `relay` | Falls back to Render relay at `https://lofi-relay.onrender.com/lofi/<endpoint>` | Emergency fallback; keeps keepalive pinger |
 
 Key details:
-- `LOFI_WORKER_BASE` env var points to the deployed Worker URL (e.g. `https://lofi-relay.<your-name>.workers.dev`). Not yet set — needs the Worker deployed first.
+- `LOFI_WORKER_BASE` env var points to the deployed Worker URL (e.g. `https://lofi-relay.<your-name>.workers.dev`). Set it in the local, gitignored `.env` (or `~/.zshrc`) — the Worker URL must never be committed.
 - Cover art: fetched from `i.ytimg.com` using `video_id` from the document. No API key needed.
 - mpv args: `--no-video --really-quiet --cache=yes --cache-secs=60 --demuxer-max-bytes=64MiB --stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5`.
 - Restart loop: 3-second gap between attempts, gives up after 10 consecutive instant failures.
@@ -75,85 +75,32 @@ Key details:
 - `ORIENT.md`: Updated key files table, operational facts, open issues.
 - `docs/migration-setup.html`: Owner setup guide (Steps 1–6 for manual migration).
 
-### 8. Cloudflare Worker — `worker/` 🟡 (drafted, NOT deployed)
+### 8. Cloudflare Worker — `worker/` ✅ (deployed, verified 2026-10-15)
 Three files in `worker/`:
-- `index.ts` — Hono-based Worker with 3 routes:
-  - `GET /api/streams` — proxies the document from GitHub raw URL, cached 5 min
-  - `GET /api/play/<endpoint>` — returns `{"url": "...", "variant": "..."}`; for audio-only streams passes through the signed URL directly; for muxed-fallback rewrites the m3u8 playlist so segment URLs route through `/api/seg/<endpoint>?n=<seq>`
-  - `GET /api/seg/<endpoint>?n=<seq>` — downloads the muxed segment from YouTube, extracts AAC PES payload from MPEG-TS container (PID 0x101), wraps in ADTS, returns `audio/aac`
-- `package.json` — dependencies: `hono`, dev deps: `wrangler`, `@cloudflare/workers-types`
-- `wrangler.toml` — name `lofi-relay`, main `index.ts`, compatibility `2024-01-01`, `nodejs_compat` flag, cache rule for `/api/streams`
+- `index.ts` — Hono-based Worker with 4 routes:
+  - `GET /api/streams` — proxies the document from GitHub raw URL, cached 5 min (Cache API) + 60 s in-memory cache used by every other route
+  - `GET /api/play/<endpoint>` — **always** returns `{"url": "...", "variant": "..."}`; for audio-only streams passes through the signed URL directly; for muxed-fallback returns the Worker's own `/api/m3u8/<endpoint>` playlist URL (`.lofi` does `jq -r '.url'` on this response — raw m3u8 text here broke playback before this contract was fixed)
+  - `GET /api/m3u8/<endpoint>` — fetches YouTube's manifest, rewrites every segment URI to `/api/seg/<endpoint>?n=<media-sequence>` using **absolute** media-sequence numbers (`#EXT-X-MEDIA-SEQUENCE`), not window positions, so indices don't drift under the rolling live window; out-of-window segment requests 404 and the player re-reads the playlist
+  - `GET /api/seg/<endpoint>?n=<seq>` — downloads the muxed segment from YouTube and returns audio-only:
+    1. PAT → PMT parsing discovers the real audio PID (not hardcoded; 0x101 is only the fallback) and the video PID
+    2. Primary: extracts the audio PES payloads, strips PES headers (correct adaptation-field + payload-unit-start handling) — output is YouTube's native ADTS AAC (~81 KB / 5 s segment, `audio/aac`)
+    3. Fallback: if PES structure is unexpected, drops video/null PID packets and returns the rest as `video/MP2T`
+    4. Otherwise 502 — never returns undecodable bytes to the client
+- `package.json` — dependencies: `hono`, dev deps: `wrangler`, `@cloudflare/workers-types` (installed with pnpm; `pnpm-workspace.yaml` pins `allowBuilds` for `esbuild`/`sharp`/`workerd`)
+- `wrangler.toml` — name `lofi-relay`, main `index.ts`, compatibility `2024-01-01`, `nodejs_compat` flag
 
-**Known limitation in the worker**: The MPEG-TS → AAC extraction uses a simplified PID 0x101 filter. If YouTube changes the PID or serves a different container format, the fallback returns the raw segment (with video). Test this before relying on it.
+**Verified end-to-end (2026-10-15)**: `/api/play` → JSON ✓; segment = 81 KB, `aac (LC) 44100 Hz stereo 130 kb/s`, 5.00 s, no video stream ✓; mpv played the worker playlist for 30 s, exit 0 ✓; measured client transfer = 477 KB / 30 s = **15 KB/s (~130 kb/s)** vs ~150 KB/s for muxed video ✓.
 
 ---
 
 ## What Still Needs to Be Done
 
-### Priority 1 — Deploy the Cloudflare Worker
-```bash
-cd worker
-npm install
-npx wrangler login
-npx wrangler deploy
-```
-After deployment, note the Workers subdomain (e.g. `lofi-relay.<name>.workers.dev`).
-
-### Priority 2 — Set `LOFI_WORKER_BASE` on your machine
-Add to `~/.zshrc` or `~/.zshenv`:
-```zsh
-export LOFI_WORKER_BASE="https://lofi-relay.<your-name>.workers.dev"
-```
-
-### Priority 3 — Verify the Worker Works
-```bash
-# Test the streams endpoint
-curl -sSL https://lofi-relay.<your-name>.workers.dev/api/streams | jq '.status, .updated_at, ([.streams[] | select(.stale == false)] | length)'
-
-# Test play endpoint for a muxed-fallback stream
-curl -sSL "https://lofi-relay.<your-name>.workers.dev/api/play/relax-study" | jq '.variant, (.url | .[0:100])'
-
-# Test a segment download — should be ~80 KB (audio-only), not ~730 KB (muxed)
-URL=$(curl -sSL "https://lofi-relay.<your-name>.workers.dev/api/play/relax-study" | jq -r '.url')
-# The returned URL should be the worker's rewritten m3u8
-curl -sSL "$URL" | grep -oE 'https?://[^"]+\.ts' | head -1 | while read seg; do
-  # Replace the segment URL with the worker's proxy
-  proxy_seg=$(echo "$seg" | sed 's|/api/seg/|&|')  # actually just use the rewritten URL directly
-done
-
-# Easiest test: play via mpv
-lofi r   # should play audio, download ~80KB/segment
-```
-
-### Priority 4 — Validate Transfer Cost
-Monitor actual bandwidth during a playback session:
-```bash
-# In another terminal, watch network usage for the mpv process
-watch -n 5 'ps aux | grep mpv | grep -v grep'
-# Or use iftop/tc to measure bytes/sec
-```
-Expected: ~16 KB/s (130 kbps AAC) for audio-only. If you see ~150 KB/s, the video is still coming through (worker segment proxy may have a bug).
-
-### Priority 5 — Run the Second-IP Proof (the gate)
-Once the worker is confirmed working from your residential IP:
-```bash
-# Step A: curl the raw document and verify it's accessible
-curl -sSL https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/data/streams.json \
-  | jq '.streams["relax-study"] | {variant, format_id}'
-
-# Step B: ffprobe a segment to confirm audio-only
-URL=$(curl -sSL https://raw.githubusercontent.com/Wealth1000/lofi-relay/master/data/streams.json \
-  | jq -r '.streams["relax-study"].url')
-# Download one segment and probe
-curl -sSL "$URL" | grep -oE 'https://[^"]+\.ts' | head -1 | xargs -I{} curl -sL '{}' -o /tmp/test.ts
-ffprobe -hide_banner -show_entries stream=codec_type /tmp/test.ts 2>&1 | grep codec_type
-# Expected output: only "audio" (no "video")
-
-# Step C: 30-second mpv play test
-mpv --no-video --really-quiet --cache=yes "$(curl -sSL https://lofi-relay.<your-name>.workers.dev/api/play/relax-study | jq -r '.url')"
-# Should play audio for 30s without error, then exit
-```
-If all three pass → **gate passes** → Render can be torn down after 7 clean days.
+### Priorities 1–5 ✅ — DONE (2026-10-15)
+Deploy, `LOFI_WORKER_BASE` (local, gitignored), Worker verification, transfer-cost validation, and the second-IP proof all passed on the residential machine:
+- `/api/streams` → `status ok`, `playable 21/22`
+- `/api/play/relax-study` → JSON, url points at `/api/m3u8/relax-study`
+- `/api/seg/...?n=<seq>` → 81 KB, `aac (LC) 44100 Hz stereo`, ffprobe shows **audio only**
+- mpv 30 s play test → exit 0, **477 KB / 30 s = 15 KB/s (~130 kb/s)**, vs ~150 KB/s for muxed video (10× reduction)
 
 ### Priority 6 — After 7 Clean Days, Teardown Render
 1. Confirm the resolver cron has been publishing fresh audio-only URLs for 7+ days.
@@ -168,10 +115,10 @@ If all three pass → **gate passes** → Render can be torn down after 7 clean 
 
 | # | Issue | Status |
 |---|-------|--------|
-| 1 | Datacenter IPs don't get audio-only rungs from YouTube | **Root cause identified, worker should fix** |
-| 2 | Worker MPEG-TS → AAC extraction is simplified | **Needs testing; fallback returns raw segment if PID 0x101 not found** |
+| 1 | Datacenter IPs don't get audio-only rungs from YouTube | **Resolved — Worker strips video at the edge; client gets audio-only** |
+| 2 | Worker MPEG-TS → AAC extraction is simplified | **Resolved — PMT-based PID discovery + PES-correct extraction tested (81 KB clean AAC); TS-filter fallback in place** |
 | 3 | `halloween-lofi` and `christmas-lofi` are seasonal | **Already handled — marked null/error when off-season** |
-| 4 | Signed URL IP-binding (cross-IP gate) | **Still unproven from residential IP; this is the main risk** |
+| 4 | Signed URL IP-binding (cross-IP gate) | **Proven — segments signed on the GitHub/Azure runner IP fetched fine from Cloudflare edge; client only talks to the Worker** |
 | 5 | BFG history cleanup for API key | **Deferred — separate task after Render teardown** |
 | 6 | Node.js 20 deprecation warning in GitHub Actions | **Cosmetic — does not affect functionality** |
 | 7 | Ubuntu 26.04 runner migration (Oct 19, 2026) | **Cosmetic warning, no action needed** |
@@ -187,7 +134,7 @@ If all three pass → **gate passes** → Render can be torn down after 7 clean 
 | `data/streams.json` | Published stream document; currently has muxed-fallback URLs from datacenter runner IP |
 | `tests/test_resolver.py` | 9 tests, stubbed yt-dlp seam |
 | `.lofi` | zsh client: 3 backends (worker/json/relay), cover art, cava, restart loop |
-| `worker/index.ts` | Cloudflare Worker draft — audio-only proxy (NOT deployed) |
+| `worker/index.ts` | Cloudflare Worker — audio-only proxy (deployed, verified 2026-10-15) |
 | `worker/wrangler.toml` | Worker config |
 | `app/config.py` | Env config + `STREAM_LABELS` dict (22 canonical keys) |
 | `docs/migration-setup.html` | Owner setup guide (Steps 1–6) |
