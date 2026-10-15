@@ -10,7 +10,7 @@
 
 The migration off Render is **substantially complete**. The resolver cron and client rewrite are live. YouTube's audio-only HLS rungs (itag 234/233) are **not** accessible from a datacenter egress IP, so the published `data/streams.json` contains **muxed-fallback** URLs (itag 96, ~520 MB/hour) — this is by design now: the Cloudflare Worker strips the video at the edge, and the client downloads only audio (~58 MB/hour equivalent, measured 15 KB/s).
 
-The Cloudflare Worker is **deployed and verified** (2026-10-15): JSON contract, PMT-based segment stripping, 30 s mpv playback, 10× bandwidth reduction all confirmed. Remaining: run the worker as primary for 7 clean days, then tear down Render (Priority 6).
+The Cloudflare Worker is **deployed and verified** (2026-10-15): JSON contract, PMT-based segment stripping, 30 s mpv playback, 10× bandwidth reduction all confirmed. Remaining: 7-day worker soak (informational), then rotate the API key into env vars and scrub it from history (Priority 6). Render stays up as a dormant fallback — no teardown.
 
 ---
 
@@ -47,7 +47,7 @@ Three backends, selected via `LOFI_BACKEND` env var (default: `worker`):
 |---------|----------|-------------|
 | `worker` (default) | Fetches document from CF Worker `/api/play/<endpoint>`, plays result directly via mpv | **Primary path — deployed and verified 2026-10-15** |
 | `json` | Fetches `data/streams.json` directly from GitHub raw, plays the raw URL | Debugging, or when your residential IP gets audio-only |
-| `relay` | Falls back to Render relay at `https://lofi-relay.onrender.com/lofi/<endpoint>` | Emergency fallback; keeps keepalive pinger |
+| `relay` | Falls back to Render relay at `https://lofi-relay.onrender.com/lofi/<endpoint>` | Dormant fallback, kept indefinitely (no teardown); keepalive pinger stays on |
 
 Key details:
 - `LOFI_WORKER_BASE` env var points to the deployed Worker URL (e.g. `https://lofi-relay.<your-name>.workers.dev`). Set it in the local, gitignored `.env` (or `~/.zshrc`) — the Worker URL must never be committed.
@@ -102,12 +102,15 @@ Deploy, `LOFI_WORKER_BASE` (local, gitignored), Worker verification, transfer-co
 - `/api/seg/...?n=<seq>` → 81 KB, `aac (LC) 44100 Hz stereo`, ffprobe shows **audio only**
 - mpv 30 s play test → exit 0, **477 KB / 30 s = 15 KB/s (~130 kb/s)**, vs ~150 KB/s for muxed video (10× reduction)
 
-### Priority 6 — After 7 Clean Days, Teardown Render
-1. Confirm the resolver cron has been publishing fresh audio-only URLs for 7+ days.
-2. Confirm `lofi -health` shows all streams playable via worker.
-3. Stop the Render instance (Settings → Destroy this application).
-4. Remove the `X-API-Key` from `.lofi` and rewrite the relay fallback path to be truly dead.
-5. Run BFG Repo-Cleaner to remove the hardcoded API key from git history (separate task).
+### Priority 6 — Render Kept as Dormant Fallback + API Key Cleanup
+**Decision (2026-10-15): Render is NOT torn down.** It stays indefinitely as an independent, Cloudflare-free fallback (`LOFI_BACKEND=relay`), kept warm by the keepalive pinger. Rationale: YouTube's audio-only rung denial for datacenter IPs is IP-class reputation, not a temporary flag that expires — but relay still insures against *worker-side* failure (CF outage, CF account trouble), which is a different risk from the flag.
+
+1. Soak: run the worker as primary for 7 clean days and confirm `lofi -health` stays green. Informational — nothing is gated on it anymore.
+2. Rotate the API key (mandatory regardless of relay — the old key exists in git history):
+   a. Set a new `LOFI_API_KEY` on Render. The app reads it from the environment (`app/auth.py`), so the old key dies the moment the env var changes.
+   b. Put the new key only in the local, gitignored `.env` (`LOFI_API_KEY=...`) — `.lofi` reads it from the environment; no secret lives in a committed file.
+   c. Re-copy `.lofi` to any machine whose local copy still hardcodes the key (the committed line 63 is now `${LOFI_API_KEY:-}`).
+   d. Scrub the old key from git history with `git filter-repo` + force push (same procedure used for the worker URL).
 
 ---
 
@@ -119,7 +122,7 @@ Deploy, `LOFI_WORKER_BASE` (local, gitignored), Worker verification, transfer-co
 | 2 | Worker MPEG-TS → AAC extraction is simplified | **Resolved — PMT-based PID discovery + PES-correct extraction tested (81 KB clean AAC); TS-filter fallback in place** |
 | 3 | `halloween-lofi` and `christmas-lofi` are seasonal | **Already handled — marked null/error when off-season** |
 | 4 | Signed URL IP-binding (cross-IP gate) | **Proven — segments signed on the GitHub/Azure runner IP fetched fine from Cloudflare edge; client only talks to the Worker** |
-| 5 | BFG history cleanup for API key | **Deferred — separate task after Render teardown** |
+| 5 | BFG history cleanup for API key | **Decoupled from teardown — rotate key → env var → scrub history (Priority 6)** |
 | 6 | Node.js 20 deprecation warning in GitHub Actions | **Cosmetic — does not affect functionality** |
 | 7 | Ubuntu 26.04 runner migration (Oct 19, 2026) | **Cosmetic warning, no action needed** |
 

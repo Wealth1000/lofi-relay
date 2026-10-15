@@ -60,7 +60,9 @@ lofi_worker_url() {
 lofi() {
 	local backend="${LOFI_BACKEND:-worker}"
 	local relay_base="https://lofi-relay.onrender.com"
-	local LOFI_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	# Relay auth key comes from the environment only — never from this file.
+	# Set LOFI_API_KEY in the local, gitignored .env (or ~/.zshrc).
+	local LOFI_API_KEY="${LOFI_API_KEY:-}"
 
 	# flag:endpoint:label — one source of truth for help, dispatch and -R.
 	# Endpoint names are canonical: the keys of app/config.py STREAMS. The

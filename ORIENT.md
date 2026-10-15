@@ -78,13 +78,13 @@ GitHub Actions cron (30 min, fresh runner each run)
    after 200 headers are sent → client gets a truncated empty AAC body.
 6. Manifest `expire` from YouTube is ignored; fixed `STREAM_URL_TTL` used.
 7. No tests at all.
-8. `format_id="91"` hardcoded with no fallback list (relay-specific; frozen
-   until teardown).
+8. `format_id="91"` hardcoded with no fallback list (relay-specific;
+   frozen while the relay runs as a dormant fallback).
 
 **Resolved by this migration (issue #3):**
 - #5 / #6: the resolver's merge-preserved document removes the single-source-of-trust cache on Render; stale entries fall back to last-good URLs without corrupting.
 - #7: test seam 1 is landed (`tests/test_resolver.py`).
-- Cross-IP YouTube signature gate: documented in `docs/migration-setup.html` Step 3. Not yet verified from a residential IP — Render stays until that passes.
+- Cross-IP YouTube signature gate: **passed 2026-10-15** — segments signed on the runner IP fetch fine from Cloudflare edge. Render stays as a dormant fallback regardless (no teardown planned).
 
 ## Stale leftovers (still on Render, not Fly)
 
@@ -92,7 +92,7 @@ GitHub Actions cron (30 min, fresh runner each run)
 - `.lofi` and `README.md` previously referenced `https://lofi-relay.fly.dev`
   — now point at `https://lofi-relay.onrender.com`.
 - `app/config.py` still hardcodes `UPSTREAM_FORMAT="91"` — relay is frozen
-  until teardown (see Step 6 of `docs/migration-setup.html`).
+  and kept indefinitely as a dormant fallback (see HANDOFF Priority 6).
 
 ## Session restart instructions
 
