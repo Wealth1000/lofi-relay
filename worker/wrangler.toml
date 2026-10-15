@@ -5,9 +5,3 @@ compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
-
-# Cache the streams document for 5 minutes
-[[rules]]
-type = "CachedLevel"
-pattern = "^/api/streams$"
-ttl = 300
